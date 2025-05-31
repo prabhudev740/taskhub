@@ -1,0 +1,14 @@
+# dirs
+.venv
+.idea
+data
+**/__pycache__/
+
+# files
+test.ipynb
+identifier.sqlite
+.env.example
+app/execution.log
+app/core/execution.log
+app/apis/v1/execution.log
+
