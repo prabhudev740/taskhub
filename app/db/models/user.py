@@ -1,16 +1,19 @@
-from datetime import datetime
+import uuid
+
+from sqlalchemy.orm import relationship
+from sqlalchemy import Boolean, String, Column, UUID, DateTime, func
 from schemas.user import User
-from sqlalchemy import Boolean, String, Column, UUID, DateTime, ForeignKey
 from db.base import Base
+from db.models.organization import OrganizationMember
 
 class UserInDB(User):
     hashed_password: str
 
 
 class User(Base):
-    __tablename__ = "user"
+    __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     first_name = Column(String(128), nullable=False)
     last_name = Column(String(128), nullable=False)
     email = Column(String(64), unique=True, nullable=False, index=True)
@@ -19,12 +22,15 @@ class User(Base):
     is_active = Column(Boolean, default=True, index=True)
     is_superuser = Column(Boolean, default=False, index=True)
 
-    created_at = Column(DateTime, default=datetime.now(), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(), nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     last_login_at = Column(DateTime, nullable=True)
 
-    organizations_id = Column(UUID, ForeignKey("organization.id"), primary_key=True)
+    # Relationship to members
+    memberships = relationship("OrganizationMember", back_populates="users")
 
+    def __repr__(self):
+        return User.__tablename__
 
 
 

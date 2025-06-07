@@ -4,7 +4,8 @@ from fastapi import Depends, HTTPException, status
 
 from core.config import SECRET_KEY, ALGORITHM
 from core.logging_conf import Logging
-from core.security import oauth2_scheme, get_user, fake_users_db
+from core.security import oauth2_scheme
+from db.crud.crud_user import get_user_by_username
 from schemas.token import TokenData
 from schemas.user import User
 from typing import Annotated
@@ -12,7 +13,12 @@ from jwt.exceptions import InvalidTokenError
 
 log = Logging(__name__).log()
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+def is_active_user(is_active: bool):
+    if not is_active:
+        raise HTTPException(status_code=403, detail="Inactive User")
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -25,12 +31,14 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         if not username:
             raise credentials_exception
         token_data = TokenData(username=username)
-        user = get_user(fake_users_db, username=token_data.username)
+        user = get_user_by_username(email=token_data.username)
     except InvalidTokenError:
         raise credentials_exception
-    return user
+    response_user = User.model_validate(user)
+    return response_user
+
 
 async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive User")
+    is_active_user(current_user.is_active)
     return current_user
+

@@ -1,5 +1,7 @@
 from logging import getLogger, StreamHandler, FileHandler, Formatter
 
+from core.config import EXECUTION_LOG_PATH
+
 _FORMATTER = Formatter(
     fmt="{asctime} - {levelname} - {filename}:{lineno} - {message}",
     style="{",
@@ -14,7 +16,7 @@ class Logging:
         logger = getLogger(self.__name)
 
         console_handler = StreamHandler()
-        file_handler = FileHandler("execution.log", mode="a", encoding="utf-8")
+        file_handler = FileHandler(EXECUTION_LOG_PATH, mode="a", encoding="utf-8")
 
         file_handler.setFormatter(_FORMATTER)
         console_handler.setFormatter(_FORMATTER)
@@ -26,5 +28,5 @@ class Logging:
         return logger
 
 
-if __name__ == "__main__":
-    Logging.log().info("This is the logger file")
+# if __name__ == "__main__":
+#     Logging.log().info("This is the logger file")

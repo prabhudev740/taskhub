@@ -1,0 +1,44 @@
+import uuid
+
+from sqlalchemy import Column, UUID, String, Text, ForeignKey, func, DateTime
+from sqlalchemy.orm import relationship
+from db.base import Base
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, unique=True, nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationship to members
+    members = relationship("OrganizationMember", back_populates="organization")
+    # owner = relationship("User") # If you have owner_id
+
+
+class OrganizationMember(Base):
+    __tablename__ = "organization_members"
+
+    user_id = Column(UUID(as_uuid=True),
+                     ForeignKey("users.id", ondelete="CASCADE"),
+                     primary_key=True)
+    organization_id = Column(UUID(as_uuid=True),
+                     ForeignKey("organizations.id", ondelete="CASCADE"),
+                     primary_key=True)
+    role = Column(String(32), nullable=False)
+    joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    users = relationship("User", back_populates="memberships")
+    organization = relationship("Organization", back_populates="members")
+
+
+# if __name__ == "__main__":
+#     create_db_and_tables()
+#     session = get_session()
+#     new_org = Organization(name="Prabhu1")
+#     session.add(new_org)
+#     session.commit()
