@@ -2,15 +2,11 @@ import uuid
 
 from sqlalchemy.orm import relationship
 from sqlalchemy import Boolean, String, Column, UUID, DateTime, func
-from schemas.user import User
 from db.base import Base
 from db.models.organization import OrganizationMember
 
-class UserInDB(User):
-    hashed_password: str
 
-
-class User(Base):
+class UserModel(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -30,7 +26,7 @@ class User(Base):
     memberships = relationship("OrganizationMember", back_populates="users")
 
     def __repr__(self):
-        return User.__tablename__
+        return UserModel.__tablename__
 
 
 

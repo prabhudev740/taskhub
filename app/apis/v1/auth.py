@@ -11,6 +11,7 @@ from db.crud.crud_user import create_user
 from schemas.token import Token
 from schemas.user import User, CreateUser
 from services.auth_service import authenticate_user, create_access_token
+from services.user_service import create_new_user
 
 log = Logging(__name__).log()
 
@@ -41,16 +42,8 @@ async def refresh_token():
     return {"message": "/refresh"}
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register_user(user: CreateUser) -> dict[str,UUID]:
-    # if is_exiting_user(email):
-    #     raise HTTPException(status_code=409, detail="User with this email already exists")
-
-    hashed_password = get_hashed_password(user.password)
-    user = create_user(first_name=user.first_name,
-                       last_name=user.last_name,
-                       email=user.email,
-                       hashed_password=hashed_password)
-    return {"id": user.id}
+async def register_user(user: Annotated[User, Depends(create_new_user)]) -> User:
+    return user
 
 @router.post("/logout")
 async def logout_user():

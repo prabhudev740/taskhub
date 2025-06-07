@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Form
 from typing import Annotated
 from core.logging_conf import Logging
 from schemas.user import User, UpdateUser
-from services.user_service import get_current_active_user
+from services.user_service import get_current_active_user, update_current_active_user
 
 router = APIRouter(prefix="/api/v1", tags=['users'])
 log = Logging(__name__).log()
@@ -16,9 +16,9 @@ async def get_current_user(current_user: Annotated[User, Depends(get_current_act
 
 @router.put("/users/me")
 async def update_current_user(current_user: Annotated[User, Depends(get_current_active_user)],
-                              updated_user: UpdateUser):
-    # update_user_data(e)
-    return {"message": "me"}
+                              update_user: UpdateUser):
+    user = await update_current_active_user(current_user.id, update_user)
+    return user
 
 @router.patch("/users/me/password")
 async def update_current_user_password():

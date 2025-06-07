@@ -32,7 +32,7 @@ class OrganizationMember(Base):
     role = Column(String(32), nullable=False)
     joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    users = relationship("User", back_populates="memberships")
+    users = relationship("UserModel", back_populates="memberships")
     organization = relationship("Organization", back_populates="members")
 
 
