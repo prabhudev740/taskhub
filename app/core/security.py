@@ -14,3 +14,4 @@ def verify_hash_password(plane_password, hashed_password):
 
 def get_hashed_password(password):
     return pwd_context.hash(password)
+

@@ -1,7 +1,6 @@
 from pathlib import Path
 import os
 
-
 # Paths
 PROJECT_PATH = Path(__file__).resolve().parent.parent.parent
 BASE_PATH = Path(__file__).parent.parent

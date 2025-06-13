@@ -1,17 +1,13 @@
-from datetime import timedelta, datetime
-from uuid import UUID
-
-from fastapi import APIRouter, Query, HTTPException, Depends, status, Form
+from datetime import timedelta
+from fastapi import APIRouter, HTTPException, Depends, status, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from core.config import ACCESS_TOKEN_EXPIRE_MINUTES
 from core.logging_conf import Logging
-from core.security import  get_hashed_password
-from db.crud.crud_user import create_user
 from schemas.token import Token
-from schemas.user import User, CreateUser
+from schemas.user import User
 from services.auth_service import authenticate_user, create_access_token
-from services.user_service import create_new_user
+from services.user_service import create_new_user, get_current_active_user
 
 log = Logging(__name__).log()
 
@@ -24,7 +20,7 @@ router = APIRouter(
 
 
 @router.post("/token")
-async def get_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+async def get_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], response: Response) -> Token:
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -37,27 +33,48 @@ async def get_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) 
     access_token = create_access_token(data={"sub": user.email}, expire_delta=access_token_expires)
     return Token(access_token=access_token, token_type="bearer", expires_in=60)
 
+    # response.set_cookie(
+    #     key="access_token",
+    #     value=access_token,
+    #     httponly=True,  # Prevent JavaScript access
+    #     secure=True,    # Use only over HTTPS in production
+    #     samesite="lax"  # Adjust as needed
+    # )
+    # # return {"message": "Token set in cookie"}
+    # # return Token(access_token=access_token, token_type="bearer", expires_in=60)
+    # return {
+    #         "access_token": access_token,
+    #         "token_type": "bearer",
+    #         "expires_in": 60
+    #     }
+
 @router.post("/refresh")
 async def refresh_token():
     return {"message": "/refresh"}
+
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_user(user: Annotated[User, Depends(create_new_user)]) -> User:
     return user
 
+
 @router.post("/logout")
-async def logout_user():
-    return {"message": "/logout"}
+async def logout_user(current_user: Annotated[User, Depends(get_current_active_user)],
+                      response: Response):
+    response.delete_cookie("access_token")
+    return {"message": "Logged out"}
+
 
 @router.post("/request-password-reset")
-async def request_password_reset(email):
-    return {"message": "/request-password-reset"}
+async def request_password_reset(email: str):
+    ...
+
 
 @router.post("/password-reset")
 async def password_reset():
-    return {"message": "/password-reset"}
+    ...
 
 
 @router.get("/password-policy")
 async def password_policy():
-    return {"message": "/password-policy"}
+    ...

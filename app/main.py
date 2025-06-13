@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from core.logging_conf import Logging
-from apis.v1 import auth, users
+from apis.v1 import auth, users, organizations
 from db.base import create_db_and_tables
 
 log = Logging(__name__).log()
@@ -11,6 +11,7 @@ app = FastAPI()
 
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(organizations.router)
 
 @app.get("/")
 async def root():

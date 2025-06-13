@@ -1,10 +1,7 @@
 from datetime import datetime
 from typing import Annotated
-
-from fastapi import Depends
 from pydantic import BaseModel, Field
 from uuid import UUID
-from core.security import get_hashed_password
 
 
 class Notification(BaseModel):
@@ -41,11 +38,9 @@ class CreateUser(BaseModel):
 
 
 class UpdateUser(BaseModel):
-    id: Annotated[UUID | None, Field(default=None)]
     first_name: Annotated[str | None, Field(min_length=2, default=None)]
     last_name: Annotated[str | None, Field(min_length=2, default=None)]
     email: Annotated[str | None, Field(min_length=5, default=None)]
-    password: Annotated[str | None, Field(min_length=8, default=None)]
     is_active: Annotated[bool | None, Field(default=None)]
     is_superuser: Annotated[bool | None, Field(default=None)]
     created_at: Annotated[datetime | None, Field(default=None)]
@@ -53,8 +48,19 @@ class UpdateUser(BaseModel):
     last_login_at: Annotated[datetime | None, Field(default=None)]
 
 
-# class User(BaseModel):
-#     username: str
-#     email: str | None = None
-#     fullname: str | None = None
-#     disabled: bool | None = None
+class UserPasswordUpdate(BaseModel):
+    password: Annotated[str, Field(min_length=8)]
+    new_password: Annotated[str, Field(min_length=8)]
+    confirm_new_password: Annotated[str, Field(min_length=8)]
+
+
+class UserProfile(BaseModel):
+    id: UUID
+    first_name: str
+    last_name: str
+    email: str
+    is_active: bool
+    created_at: datetime
+
+
+    model_config = {"from_attributes": True}

@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 from db.base import Base
 
 
-class Organization(Base):
+class OrganizationModel(Base):
     __tablename__ = "organizations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -33,7 +33,7 @@ class OrganizationMember(Base):
     joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     users = relationship("UserModel", back_populates="memberships")
-    organization = relationship("Organization", back_populates="members")
+    organization = relationship("OrganizationModel", back_populates="members")
 
 
 # if __name__ == "__main__":
