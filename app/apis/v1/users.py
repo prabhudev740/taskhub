@@ -2,7 +2,7 @@ from uuid import UUID
 from fastapi import APIRouter, Path
 from typing import Annotated
 from core.logging_conf import Logging
-from schemas.user import User, UpdateUser, UserPasswordUpdate, UserProfile
+from schemas.user import User, UpdateUser, UserPasswordUpdate, UserProfile, UserMessageResponse
 from services.user_service import update_current_active_user, get_user_profile_by_id, CurrentActiveUserDep, \
     update_current_active_user_password
 
@@ -18,14 +18,12 @@ async def get_current_user(current_user: CurrentActiveUserDep) -> User:
 @router.put("/users/me", response_model=User)
 async def update_current_user(current_user: CurrentActiveUserDep,
                               update_user: UpdateUser) -> User:
-    user = await update_current_active_user(current_user.id, update_user)
-    return user
+    return await update_current_active_user(current_user.id, update_user)
 
-@router.patch("/users/me/password")
+@router.patch("/users/me/password", response_model=UserMessageResponse)
 async def update_current_user_password(current_user: CurrentActiveUserDep,
                                        update_password: UserPasswordUpdate):
-    response = await update_current_active_user_password(current_user.email, update_password)
-    return response
+    return await update_current_active_user_password(current_user.email, update_password)
 
 @router.get("/users/me/settings")
 async def get_current_user_settings():
@@ -38,7 +36,4 @@ async def update_current_user_settings():
 @router.get("/users/{user_id}/profile", response_model=UserProfile)
 async def get_user_profile(current_user: CurrentActiveUserDep,
                            user_id: Annotated[str, Path(...)]) -> UserProfile:
-    user_obj = UUID(user_id)
-    user = await get_user_profile_by_id(user_obj)
-    return user
-
+    return await get_user_profile_by_id(user_id=UUID(user_id))

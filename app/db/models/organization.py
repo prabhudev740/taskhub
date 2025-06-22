@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy import Column, UUID, String, Text, ForeignKey, func, DateTime
 from sqlalchemy.orm import relationship
 from db.base import Base
+from db.models.role import RoleModel
 
 
 class OrganizationModel(Base):
@@ -16,24 +17,22 @@ class OrganizationModel(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationship to members
-    members = relationship("OrganizationMember", back_populates="organization")
+    members = relationship("OrganizationMemberModel", back_populates="organization")
     # owner = relationship("User") # If you have owner_id
 
 
-class OrganizationMember(Base):
+class OrganizationMemberModel(Base):
     __tablename__ = "organization_members"
 
-    user_id = Column(UUID(as_uuid=True),
-                     ForeignKey("users.id", ondelete="CASCADE"),
-                     primary_key=True)
-    organization_id = Column(UUID(as_uuid=True),
-                     ForeignKey("organizations.id", ondelete="CASCADE"),
-                     primary_key=True)
-    role = Column(String(32), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"),
+                             primary_key=True)
+    role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), nullable=False)
     joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     users = relationship("UserModel", back_populates="memberships")
     organization = relationship("OrganizationModel", back_populates="members")
+    role = relationship("RoleModel", back_populates="organization_members")
 
 
 # if __name__ == "__main__":

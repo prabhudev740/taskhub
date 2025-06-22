@@ -17,6 +17,7 @@ def get_session():
 def create_db_and_tables():
     Base.metadata.create_all(engine)
 
+
 # TODO: Implement Async session
 # async def get_session():
 #     async with AsyncSession(engine) as session:

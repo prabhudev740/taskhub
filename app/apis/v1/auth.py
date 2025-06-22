@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from core.config import ACCESS_TOKEN_EXPIRE_MINUTES
 from core.logging_conf import Logging
+from db.crud.crud_user import update_login_time
 from schemas.token import Token
 from schemas.user import User
 from services.auth_service import authenticate_user, create_access_token
@@ -30,7 +31,7 @@ async def get_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], 
         )
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"sub": user.email}, expire_delta=access_token_expires)
+    access_token = create_access_token(data={"sub": user.username}, expire_delta=access_token_expires)
     return Token(access_token=access_token, token_type="bearer", expires_in=60)
 
     # response.set_cookie(

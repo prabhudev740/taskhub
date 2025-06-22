@@ -2,7 +2,7 @@ from datetime import timedelta, datetime, timezone
 import jwt
 from core.config import SECRET_KEY, ALGORITHM
 from core.security import verify_hash_password
-from db.crud.crud_user import get_user_by_username
+from db.crud.crud_user import get_user_by_username, update_login_time
 from fastapi import Request, HTTPException, status
 
 
@@ -12,6 +12,7 @@ def authenticate_user(username: str, password: str):
         return False
     if not verify_hash_password(password, user.hashed_password):
         return False
+    update_login_time(user_id=user.id)
     return user
 
 def create_access_token(data: dict, expire_delta: timedelta | None = None):
