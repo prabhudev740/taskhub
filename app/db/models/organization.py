@@ -3,7 +3,6 @@ import uuid
 from sqlalchemy import Column, UUID, String, Text, ForeignKey, func, DateTime
 from sqlalchemy.orm import relationship
 from db.base import Base
-from db.models.role import RoleModel
 
 
 class OrganizationModel(Base):
@@ -33,6 +32,7 @@ class OrganizationMemberModel(Base):
     users = relationship("UserModel", back_populates="memberships")
     organization = relationship("OrganizationModel", back_populates="members")
     role = relationship("RoleModel", back_populates="organization_members")
+
 
 
 # if __name__ == "__main__":

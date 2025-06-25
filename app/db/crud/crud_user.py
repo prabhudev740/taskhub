@@ -18,7 +18,7 @@ def create_user(user_data: dict) -> UserModel:
 
 def get_user_by_username(username: str) -> UserModel | None:
     session = get_session()
-    user =  session.query(UserModel).where(UserModel.username == username).first()
+    user =  session.query(UserModel).filter_by(username=username).first()
     if not user:
         return None
     return user
@@ -68,9 +68,10 @@ def update_user_password(hashed_password_update,
     session.refresh(user)
     return user
 
+
 def update_login_time(user_id: UUID):
     session = get_session()
-    user = session.query(UserModel).where(UserModel.id == user_id).first()
+    user = session.query(UserModel).filter_by(id=user_id).first()
     user.last_login_at = datetime.now(timezone.utc)
     session.commit()
     session.refresh(user)

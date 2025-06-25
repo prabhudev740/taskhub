@@ -7,7 +7,16 @@ from core.config import DATABASE_URL
 Base = declarative_base()
 
 connect_args = {"check_same_thread": False}
-engine = create_engine(DATABASE_URL, connect_args=connect_args, echo=True)
+# engine = create_engine(DATABASE_URL, connect_args=connect_args, echo=True)
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
+    connect_args=connect_args,
+    echo=True
+)
+
 
 def get_session():
     with Session(engine) as session:

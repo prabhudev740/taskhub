@@ -1,17 +1,22 @@
 import uuid
 from sqlalchemy import Column, UUID, String, ForeignKey, Boolean, Table
 from sqlalchemy.orm import relationship
-# from db.models.organization import OrganizationMemberModel
-# from db.models.permission import PermissionModel
 from db.base import Base
 
 
-role_permission = Table(
-    "role_permission",
-    Base.metadata,
-    Column("role_id", UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
-    Column("permission_id", UUID(as_uuid=True), ForeignKey("permissions.id", ondelete="CASCADE"), primary_key=True),
-)
+# role_permission = Table(
+#     "role_permission",
+#     Base.metadata,
+#     Column("role_id", UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
+#     Column("permission_id", UUID(as_uuid=True), ForeignKey("permissions.id", ondelete="CASCADE"), primary_key=True),
+# )
+
+
+class RolePermissionModel(Base):
+    __tablename__ = "role_permission"
+
+    role_id = Column(UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True)
+    permission_id = Column(UUID(as_uuid=True), ForeignKey("permissions.id", ondelete="CASCADE"), primary_key=True)
 
 class RoleModel(Base):
     __tablename__ = "roles"
@@ -23,5 +28,5 @@ class RoleModel(Base):
     organization_id = Column(String, ForeignKey("organizations.id"), nullable=True)
 
     organization_members = relationship("OrganizationMemberModel", back_populates="role")
-    permissions = relationship("PermissionModel", secondary=role_permission, back_populates="roles")
+    permissions = relationship("PermissionModel", secondary="role_permission", back_populates="roles")
 

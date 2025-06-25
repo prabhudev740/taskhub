@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Annotated
 from uuid import UUID
 from datetime import datetime
+from schemas.user import UserProfileShort
 
 
 class Organization(BaseModel):
@@ -14,14 +15,6 @@ class Organization(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class OrganizationResponse(BaseModel):
-    items: list[Organization]
-    total: int
-    page: int
-    size: int
-    pages: int
-
-
 class CreateOrganization(BaseModel):
     name: Annotated[str, Field(min_length=5, max_length=32)]
     description: Annotated[str | None,  Field(max_length=1024)]
@@ -29,7 +22,7 @@ class CreateOrganization(BaseModel):
 
 class OrganizationUserRole(BaseModel):
     username: Annotated[str, Field(min_length=5)]
-    role: Annotated[str | None, Field(min_length=2, default="Viewer")]
+    role_name: Annotated[str | None, Field(min_length=2, default="Viewer")]
 
 
 class AddOrganizationMembersRequest(BaseModel):
@@ -43,8 +36,21 @@ class AddOrganizationMemberResponse(BaseModel):
   role_name: str
   user_email: str
   user_full_name: str
-  status: bool
+  status: str
   joined_at: datetime
 
   model_config = {"from_attributes": True}
+
+
+class OrganizationResponse(BaseModel):
+    items: list[Organization]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+
+class OrganizationByIDResponse(Organization):
+    owner_details: UserProfileShort
+    member_count: int
 

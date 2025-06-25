@@ -1,7 +1,9 @@
+""" User Schemas """
+
+from uuid import UUID
 from datetime import datetime
 from typing import Annotated
 from pydantic import BaseModel, Field
-from uuid import UUID
 
 
 class Notification(BaseModel):
@@ -15,19 +17,28 @@ class Preferences(BaseModel):
     notifications: Notification | None
 
 
-class User(BaseModel):
+class UserProfile(BaseModel):
     id: UUID
     first_name: str
     last_name: str
     username: str
     email: str
     is_active: bool
-    is_superuser: bool
     created_at: datetime
-    updated_at: datetime
-    last_login_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class UserProfileShort(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+
+
+class User(UserProfile):
+    is_active: bool
+    updated_at: datetime
+    last_login_at: datetime | None = None
 
 
 class CreateUser(BaseModel):
@@ -49,18 +60,6 @@ class UserPasswordUpdate(BaseModel):
     password: Annotated[str, Field(min_length=8)]
     new_password: Annotated[str, Field(min_length=8)]
     confirm_new_password: Annotated[str, Field(min_length=8)]
-
-
-class UserProfile(BaseModel):
-    id: UUID
-    first_name: str
-    last_name: str
-    username: str
-    email: str
-    is_active: bool
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class UserMessageResponse(BaseModel):
