@@ -1,17 +1,22 @@
-""" Organization """
+""" Organization APIs """
+
 from uuid import UUID
 from typing import Annotated
 from fastapi import APIRouter, Path, Query, status
 
 from core.dependencies import CurrentActiveUserDep
+from core.logging_conf import Logging
 from schemas.organization import CreateOrganization, OrganizationResponse, Organization, \
-    AddOrganizationMembersRequest, AddOrganizationMemberResponse, OrganizationByIDResponse, UpdateOrganization, \
-    OrganizationMessageResponse
+    AddOrganizationMembersRequest, AddOrganizationMemberResponse, OrganizationByIDResponse, \
+    UpdateOrganization
 from services.organization_service import crate_new_organization, get_organization_details, \
     add_new_members_to_organization, verify_current_user_role, get_organization_details_by_id, \
     update_organization_details, delete_organizations
 
+# Initialize API router for organization-related endpoints
 router = APIRouter(prefix="/api/v1", tags=["organizations"])
+
+log = Logging(__name__).log()
 
 
 @router.get("/organization", response_model=OrganizationResponse)
@@ -19,16 +24,49 @@ async def get_organization(current_user: CurrentActiveUserDep,
                            page: Annotated[int, Query(ge=1)] = 1,
                            size: Annotated[int, Query(ge=10)] = 10,
                            sort_by: Annotated[str, Query()] = "joined_at"):
+    """
+    Retrieve a paginated list of organizations.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        page (int): Page number for pagination (minimum value: 1).
+        size (int): Number of items per page (minimum value: 10).
+        sort_by (str): Field to sort the organizations by.
+
+    Returns:
+        OrganizationResponse: Paginated list of organizations.
+    """
     return await get_organization_details(current_user.id, page, size, sort_by)
 
 
 @router.post("/organization", response_model=Organization, status_code=status.HTTP_201_CREATED)
 async def create_organization(org: CreateOrganization, current_user: CurrentActiveUserDep):
+    """
+    Create a new organization.
+
+    Args:
+        org (CreateOrganization): Organization creation details.
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+
+    Returns:
+        Organization: Details of the newly created organization.
+    """
     return await crate_new_organization(org, current_user_id=current_user.id)
 
 
 @router.get("/organization/{org_id}", response_model=OrganizationByIDResponse)
-async def get_organizations_by_id(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)]):
+async def get_organizations_by_id(current_user: CurrentActiveUserDep,
+                                  org_id: Annotated[str, Path(...)]):
+    """
+    Retrieve organization details by ID.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization to retrieve.
+
+    Returns:
+        OrganizationByIDResponse: Details of the specified organization.
+    """
     organization_id = UUID(org_id)
     await verify_current_user_role(user_id=current_user.id,
                                    org_id=organization_id,
@@ -40,7 +78,17 @@ async def get_organizations_by_id(current_user: CurrentActiveUserDep, org_id: An
 async def update_organizations_by_id(current_user: CurrentActiveUserDep,
                                      org_id: Annotated[str, Path(...)],
                                      org: UpdateOrganization):
-    """ update the org """
+    """
+    Update organization details by ID.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization to update.
+        org (UpdateOrganization): Updated organization details.
+
+    Returns:
+        OrganizationByIDResponse: Updated organization details.
+    """
     organization_id = UUID(org_id)
     await verify_current_user_role(user_id=current_user.id,
                                    org_id=organization_id,
@@ -52,6 +100,16 @@ async def update_organizations_by_id(current_user: CurrentActiveUserDep,
 @router.delete("/organization/{org_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_organizations_by_id(current_user: CurrentActiveUserDep,
                                      org_id: Annotated[str, Path(...)]):
+    """
+    Delete an organization by ID.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization to delete.
+
+    Returns:
+        None: Indicates successful deletion.
+    """
     organization_id = UUID(org_id)
     await verify_current_user_role(user_id=current_user.id,
                                    org_id=organization_id,
@@ -60,16 +118,36 @@ async def delete_organizations_by_id(current_user: CurrentActiveUserDep,
 
 
 @router.get("/organization/{org_id}/members")
-async def get_organization_members(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)]):
-    """ Get members of the organization id. """
-    ...
+async def get_organization_members(current_user: CurrentActiveUserDep,
+                                   org_id: Annotated[str, Path(...)]):
+    """
+    Retrieve members of an organization by ID.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization.
+
+    Returns:
+        Any: List of organization members (to be implemented).
+    """
+    log.info("%s %s", current_user.id, org_id)
 
 
 @router.post("/organization/{org_id}/members", response_model=AddOrganizationMemberResponse)
 async def add_member_to_organization(current_user: CurrentActiveUserDep,
                                    org_id: Annotated[str, Path(...)],
                                    user_roles: AddOrganizationMembersRequest):
-    """ Invite / Add User """
+    """
+    Add or invite a user to an organization.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization.
+        user_roles (AddOrganizationMembersRequest): Roles and details of the user to add.
+
+    Returns:
+        AddOrganizationMemberResponse: Response indicating the result of the operation.
+    """
     org_id = UUID(org_id)
     await verify_current_user_role(user_id=current_user.id,
                                    org_id=org_id,
@@ -78,36 +156,95 @@ async def add_member_to_organization(current_user: CurrentActiveUserDep,
 
 
 @router.put("/organizations/{org_id}/members/{user_id}/role")
-def get_members_role(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)], user_id: Annotated[str, Path(...)]):
-    """ Assign/update a user's role within the organization. """
-    ...
+def get_members_role(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)],
+                     user_id: Annotated[str, Path(...)]):
+    """
+    Assign or update a user's role within an organization.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization.
+        user_id (str): ID of the user whose role is being updated.
+
+    Returns:
+        Any: Result of the role update operation (to be implemented).
+    """
+    log.info("%s %s %s", current_user.id, org_id, user_id)
 
 
 @router.delete("/organizations/{org_id}/members/{user_id}")
-def remove_user_from_organization(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)], user_id: Annotated[str, Path(...)]):
-    """ Remove a user from the organization. """
-    ...
+def remove_user_from_organization(current_user: CurrentActiveUserDep,
+                                  org_id: Annotated[str, Path(...)],
+                                  user_id: Annotated[str, Path(...)]):
+    """
+    Remove a user from an organization.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization.
+        user_id (str): ID of the user to remove.
+
+    Returns:
+        Any: Result of the removal operation (to be implemented).
+    """
+    log.info("%s %s %s", current_user.id, org_id, user_id)
 
 
 @router.get("/organizations/{org_id}/roles")
 def get_x(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)]):
-    """ List available roles within the organization. """
-    ...
+    """
+    List available roles within an organization.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization.
+
+    Returns:
+        Any: List of roles (to be implemented).
+    """
+    log.info("%s %s", current_user.id, org_id)
 
 
 @router.post("/organizations/{org_id}/roles")
 def post_x(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)]):
-    """ Create a custom role within the organization (advanced ABAC). """
-    ...
+    """
+    Create a custom role within an organization.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization.
+
+    Returns:
+        Any: Result of the role creation operation (to be implemented).
+    """
+    log.info("%s %s", current_user.id, org_id)
 
 
 @router.get("/organizations/{org_id}/permissions")
 def get_y(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)]):
-    """ List available permissions for role definition. """
-    ...
+    """
+    List available permissions for role definition within an organization.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization.
+
+    Returns:
+        Any: List of permissions (to be implemented).
+    """
+    log.info("%s %s", current_user.id, org_id)
 
 
 @router.put("/organizations/{org_id}/permissions")
 def update_role_permission(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)]):
-    """ List available permissions for role definition. """
-    ...
+    """
+    Update permissions for role definition within an organization.
+
+    Args:
+        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
+        org_id (str): ID of the organization.
+
+    Returns:
+        Any: Result of the permission update operation (to be implemented).
+    """
+    log.info("%s %s", current_user.id, org_id)
