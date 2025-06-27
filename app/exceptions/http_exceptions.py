@@ -52,10 +52,16 @@ ORGANIZATION_NOT_FOUND_EXCEPTION = HTTPException(
     detail="Organization not found."
 )
 
+ORGANIZATION_ALREADY_EXISTS_EXCEPTION = HTTPException(
+    status_code=status.HTTP_409_CONFLICT,
+    detail="Organization with same name already exists."
+)
+
 ALREADY_MEMBER_EXCEPTION = HTTPException(
     status_code=status.HTTP_409_CONFLICT,
     detail="User is already a member of the organization."
 )
+
 
 # Permission Related Exception
 

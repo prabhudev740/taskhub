@@ -20,6 +20,15 @@ class CreateOrganization(BaseModel):
     description: Annotated[str | None,  Field(max_length=1024)]
 
 
+class UpdateOrganization(BaseModel):
+    name: Annotated[str | None, Field(min_length=5, max_length=32)] | None
+    description: Annotated[str | None,  Field(max_length=1024)] = None
+    owner_id: Annotated[UUID | None, Field()] = None
+
+    model_config = {"from_attributes": True}
+
+
+
 class OrganizationUserRole(BaseModel):
     username: Annotated[str, Field(min_length=5)]
     role_name: Annotated[str | None, Field(min_length=2, default="Viewer")]
@@ -53,4 +62,8 @@ class OrganizationResponse(BaseModel):
 class OrganizationByIDResponse(Organization):
     owner_details: UserProfileShort
     member_count: int
+
+
+class OrganizationMessageResponse(BaseModel):
+    message: str
 

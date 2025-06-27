@@ -1,16 +1,21 @@
 from uuid import UUID
 from fastapi import HTTPException, status
+from watchfiles import awatch
+
 from core.logging_conf import Logging
-from db.crud.crud_organization import get_organization_by_name, create_organization, update_organization_member, \
-    get_organizations_by_member_id, get_organization_member_by_organization_user_id, get_organization_by_id, \
-    get_organization_member_by_organization_id
+from db.crud.crud_organization import get_organization_by_name, update_organization_member, \
+    get_organizations_by_member_id, get_organization_by_id, create_organization, \
+    get_organization_member_by_organization_id, get_organization_member_by_organization_user_id, update_organization, \
+    delete_organizations_by_id
 from db.crud.crud_permission import get_permission_by_name
 from db.crud.crud_user import get_user_by_username
 from db.crud.curd_role import get_role_by_name, get_role_permission
 from exceptions import http_exceptions
-from schemas.organization import CreateOrganization, Organization, AddOrganizationMembersRequest, \
-    OrganizationResponse, AddOrganizationMemberResponse, OrganizationByIDResponse
+from schemas.organization import CreateOrganization, Organization, OrganizationResponse, \
+    AddOrganizationMembersRequest, AddOrganizationMemberResponse, OrganizationByIDResponse, UpdateOrganization, \
+    OrganizationMessageResponse
 from schemas.user import UserProfileShort, User
+
 
 log = Logging(__name__).log()
 
@@ -23,31 +28,40 @@ async def add_new_organization_member(current_user_id, organization_id, role_nam
     role = get_role_by_name(role_name=role_name)
     if not role:
         raise role_not_found_exception
-    organization_member = {"user_id": current_user_id, "organization_id": organization_id, "role_id": role.id}
+    organization_member = {"user_id": current_user_id,
+                           "organization_id": organization_id, "role_id": role.id}
     return update_organization_member(organization_member)
 
+
 async def crate_new_organization(org: CreateOrganization, current_user_id: UUID) -> Organization:
-    org_exists_exception = HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail="Organization with same name already exists."
-    )
     if get_organization_by_name(org.name):
-        raise org_exists_exception
+        raise http_exceptions.ORGANIZATION_ALREADY_EXISTS_EXCEPTION
     organization_data = org.model_dump(exclude_unset=True)
     organization_data.update({"owner_id": current_user_id})
     organization = create_organization(organization_data)
-
     await add_new_organization_member(current_user_id, organization.id, "Owner")
-
     return Organization.model_validate(organization)
 
 
-async def get_organization_details(user_id: UUID, page: int, size: int, sort_by: str) -> OrganizationResponse:
-    items, total, pages = get_organizations_by_member_id(user_id=user_id, page=page, size=size, sort_by=sort_by)
+async def get_organization_details(user_id: UUID, page: int,
+                                   size: int, sort_by: str
+                                   ) -> OrganizationResponse:
+    items, total, pages = get_organizations_by_member_id(user_id=user_id, page=page,
+                                                         size=size, sort_by=sort_by)
     organizations = list(map(Organization.model_validate, items))
-    organizations_response = OrganizationResponse(items=organizations, total=total, pages=pages, page=page, size=size)
+    organizations_response = OrganizationResponse(items=organizations, total=total,
+                                                  pages=pages, page=page, size=size)
     return organizations_response
 
+
+def update_organization_response(organization_id: UUID, organization: Organization,
+                                 user: User) -> OrganizationByIDResponse:
+    response = organization.model_dump(exclude_unset=True)
+    response["owner_details"] = UserProfileShort(id=user.id,
+                                                 email=user.email,
+                                                 full_name=f"{user.first_name} {user.last_name}")
+    response["member_count"] = get_organization_member_by_organization_id(org_id=organization_id)
+    return OrganizationByIDResponse.model_validate(response)
 
 async def get_organization_details_by_id(org_id: UUID, user: User) -> OrganizationByIDResponse:
     organization = get_organization_by_id(organization_id=org_id)
@@ -55,15 +69,9 @@ async def get_organization_details_by_id(org_id: UUID, user: User) -> Organizati
         raise http_exceptions.ORGANIZATION_NOT_FOUND_EXCEPTION
 
     organization_data = Organization.model_validate(organization)
-    response_data = organization_data.model_dump()
-    response_data.update({"owner_details":  UserProfileShort(id=user.id, email=user.email,
-                                                             full_name=f"{user.first_name} {user.last_name}")})
-
-    response_data["owner_details"] = \
-        UserProfileShort(id=user.id, email=user.email, full_name=f"{user.first_name} {user.last_name}")
-    response_data["member_count"] = get_organization_member_by_organization_id(org_id=org_id)
-
-    return OrganizationByIDResponse.model_validate(response_data)
+    return update_organization_response(organization_id=org_id,
+                                        organization=organization_data,
+                                        user=user)
 
 
 async def verify_current_user_role(user_id: UUID, org_id: UUID, permission_name: str):
@@ -79,8 +87,9 @@ async def verify_current_user_role(user_id: UUID, org_id: UUID, permission_name:
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Organization associated to current user not found."
     )
-    log.info(f"org_id={org_id}, user_id={user_id}")
-    organization_member = get_organization_member_by_organization_user_id(org_id=org_id, user_id=user_id)
+    log.info("org_id=%s, user_id=%s", org_id, user_id)
+    organization_member = \
+        get_organization_member_by_organization_user_id(org_id=org_id, user_id=user_id)
     if not organization_member:
         raise organization_not_found_exception
 
@@ -88,15 +97,35 @@ async def verify_current_user_role(user_id: UUID, org_id: UUID, permission_name:
     if not permission:
         raise permission_not_found_exception
 
-    role_permission = get_role_permission(role_id=organization_member.role_id, permission_id=permission.id)
+    role_permission = \
+        get_role_permission(role_id=organization_member.role_id, permission_id=permission.id)
     if not role_permission:
         raise permission_exception
 
     return role_permission
 
 
+async def update_organization_details(organization_id: UUID, org: UpdateOrganization,
+                                user: User) -> OrganizationByIDResponse:
+    organization_data = org.model_dump(exclude_unset=True)
+    organization = update_organization(organization_id=organization_id, org=organization_data)
+    if not organization:
+        raise http_exceptions.ORGANIZATION_NOT_FOUND_EXCEPTION
+
+    organization_data = Organization.model_validate(organization)
+    return update_organization_response(organization_id=organization_id,
+                                        organization=organization_data,
+                                        user=user)
+
+async def delete_organizations(organization_id: UUID) -> None:
+    deleted = delete_organizations_by_id(organization_id=organization_id)
+    if not deleted:
+        raise http_exceptions.ORGANIZATION_NOT_FOUND_EXCEPTION
+
+
 async def add_new_members_to_organization(organization_id: UUID,
-                                          user_roles: AddOrganizationMembersRequest) -> list[AddOrganizationMemberResponse]:
+                                          user_roles: AddOrganizationMembersRequest
+                                          ) -> list[AddOrganizationMemberResponse]:
     if not user_roles.user_roles:
         return list()
 
@@ -106,7 +135,8 @@ async def add_new_members_to_organization(organization_id: UUID,
     user = get_user_by_username(username=user_role.username)
     if not user:
         raise http_exceptions.USER_NOT_FOUND_EXCEPTION
-    existing_member = get_organization_member_by_organization_user_id(org_id=organization_id, user_id=user.id)
+    existing_member = get_organization_member_by_organization_user_id(org_id=organization_id,
+                                                                      user_id=user.id)
     if existing_member:
         raise http_exceptions.ALREADY_MEMBER_EXCEPTION
     role = get_role_by_name(role_name=user_role.role_name)
@@ -128,7 +158,4 @@ async def add_new_members_to_organization(organization_id: UUID,
 
     rest_responses = await add_new_members_to_organization(organization_id, remaining_roles)
     return [current_response] + rest_responses
-
-
-
 

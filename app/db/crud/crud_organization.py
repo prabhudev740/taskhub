@@ -4,11 +4,12 @@ from uuid import UUID
 
 
 def get_organizations_by_member_id(user_id: UUID, page: int, size: int,
-                             sort_by: str = "joined_at") -> tuple[list[OrganizationModel], int, int]:
+                                   sort_by: str = "joined_at"
+                                   ) -> tuple[list[OrganizationModel], int, int]:
     session = get_session()
     items = (session.query(OrganizationModel)
-            # .join(OrganizationMemberModel, OrganizationMemberModel.user_id == OrganizationModel.id)
-            .join(OrganizationMemberModel, OrganizationMemberModel.organization_id == OrganizationModel.id)
+            .join(OrganizationMemberModel,
+                  OrganizationMemberModel.organization_id == OrganizationModel.id)
             .filter(OrganizationMemberModel.user_id == user_id)
     )
     sorted_items = items.order_by(getattr(OrganizationMemberModel, sort_by))
@@ -39,6 +40,28 @@ def create_organization(org: dict) -> OrganizationModel:
     session.refresh(organization)
     return organization
 
+def update_organization(organization_id: UUID, org: dict) -> OrganizationModel | None:
+    session = get_session()
+    organization = session.query(OrganizationModel).filter_by(id=organization_id).first()
+    if not organization:
+        return None
+
+    for key, val in org.items():
+        setattr(organization, key, val)
+    session.commit()
+    session.refresh(organization)
+    return organization
+
+def delete_organizations_by_id(organization_id: UUID) -> bool:
+    session = get_session()
+    organization = session.query(OrganizationModel).filter_by(id=organization_id).first()
+    if not organization:
+        return False
+    session.query(OrganizationMemberModel).filter_by(organization_id=organization_id).delete()
+    session.delete(organization)
+    session.commit()
+    return True
+
 def update_organization_member(organization_member_datar: dict) -> OrganizationMemberModel:
     organization_member = OrganizationMemberModel(**organization_member_datar)
     session = get_session()
@@ -54,10 +77,12 @@ def update_organization_member(organization_member_datar: dict) -> OrganizationM
 #         return None
 #     return organization_member
 
-def get_organization_member_by_organization_user_id(org_id: UUID, user_id: UUID) -> OrganizationMemberModel | None:
+def get_organization_member_by_organization_user_id(org_id: UUID, user_id: UUID
+                                                    ) -> OrganizationMemberModel | None:
     session = get_session()
     organization_member = \
-        session.query(OrganizationMemberModel).filter_by(user_id=user_id, organization_id=org_id).first()
+        session.query(OrganizationMemberModel).filter_by(
+            user_id=user_id, organization_id=org_id).first()
     if not organization_member:
         return None
     return organization_member
