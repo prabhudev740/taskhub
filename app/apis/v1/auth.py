@@ -99,7 +99,6 @@ async def request_password_reset():
     Returns:
         None: Placeholder for password reset request functionality.
     """
-    ...
 
 
 @router.post("/password-reset")
@@ -110,7 +109,6 @@ async def password_reset():
     Returns:
         None: Placeholder for password reset functionality.
     """
-    ...
 
 
 @router.get("/password-policy")
@@ -121,4 +119,3 @@ async def password_policy():
     Returns:
         None: Placeholder for password policy retrieval functionality.
     """
-    ...
