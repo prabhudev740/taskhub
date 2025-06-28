@@ -1,19 +1,20 @@
 """ Org Service """
 from uuid import UUID
 from fastapi import HTTPException, status
-
 from core.logging_conf import Logging
 from db.crud.crud_organization import get_organization_by_name, update_organization_member, \
     get_organizations_by_member_id, get_organization_by_id, create_organization, \
-    get_organization_member_by_organization_id, get_organization_member_by_organization_user_id, \
-    update_organization, delete_organizations_by_id
+    get_organization_member_count_by_organization_id, delete_organizations_by_id, \
+    get_organization_member_by_organization_user_id, get_organization_members_by_organization_id, \
+    update_organization
 from db.crud.crud_permission import get_permission_by_name
-from db.crud.crud_user import get_user_by_username
-from db.crud.curd_role import get_role_by_name, get_role_permission
+from db.crud.crud_user import get_user_by_username, get_user_by_id
+from db.crud.curd_role import get_role_by_name, get_role_permission, get_role_by_id
 from exceptions import http_exceptions
 from schemas.organization import CreateOrganization, Organization, OrganizationResponse, \
     AddOrganizationMembersRequest, AddOrganizationMemberResponse, OrganizationByIDResponse, \
-    UpdateOrganization
+    UpdateOrganization, OrganizationMembersResponse, OrganizationMemberData
+from schemas.role import RoleShort
 from schemas.user import UserProfileShort, User
 
 
@@ -110,7 +111,8 @@ def update_organization_response(organization_id: UUID, organization: Organizati
     response["owner_details"] = UserProfileShort(id=user.id,
                                                  email=user.email,
                                                  full_name=f"{user.first_name} {user.last_name}")
-    response["member_count"] = get_organization_member_by_organization_id(org_id=organization_id)
+    response["member_count"] = \
+        get_organization_member_count_by_organization_id(org_id=organization_id)
     return OrganizationByIDResponse.model_validate(response)
 
 async def get_organization_details_by_id(org_id: UUID, user: User) -> OrganizationByIDResponse:
@@ -272,3 +274,47 @@ async def add_new_members_to_organization(organization_id: UUID,
 
     rest_responses = await add_new_members_to_organization(organization_id, remaining_roles)
     return [current_response] + rest_responses
+
+
+async def get_organization_members_by_id(organization_id: UUID, page: int,
+                                         size: int, sort_by: str) -> OrganizationMembersResponse:
+    """
+     Retrieves list of members by organization_id.
+
+     Args:
+         organization_id (UUID): The ID of the organization.
+         page (int): The page number for pagination.
+         size (int): The number of items per page.
+         sort_by (str): The field to sort the organizations by.
+
+    Returns:
+        OrganizationMembersResponse: Organization member details.
+
+    Raises:
+        HTTPException: If the organization is not found.
+     """
+    organization = get_organization_by_id(organization_id=organization_id)
+    if not organization:
+        raise http_exceptions.ORGANIZATION_NOT_FOUND_EXCEPTION
+
+    items, total, pages = get_organization_members_by_organization_id(
+        organization_id=organization_id, page=page, size=size, sort_by=sort_by)
+    members = []
+    for item in items:
+        member = {}
+        user = get_user_by_id(item.user_id)
+        if not user:
+            raise http_exceptions.USER_NOT_FOUND_EXCEPTION
+
+        role = get_role_by_id(role_id=item.role_id)
+        if not role:
+            raise http_exceptions.ROLE_NOT_FOUND_EXCEPTION
+
+        member['user'] = UserProfileShort(id=user.id, email=user.email,
+                                          full_name=f"{user.first_name} {user.last_name}")
+        member['role'] = RoleShort(id=role.id, name=role.name)
+        member['joined_at'] = item.joined_at
+        members.append(OrganizationMemberData.model_validate(member))
+
+    return OrganizationMembersResponse(items=members,
+                                          total=total, page=page, size=size, pages=pages)

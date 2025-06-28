@@ -8,10 +8,10 @@ from core.dependencies import CurrentActiveUserDep
 from core.logging_conf import Logging
 from schemas.organization import CreateOrganization, OrganizationResponse, Organization, \
     AddOrganizationMembersRequest, AddOrganizationMemberResponse, OrganizationByIDResponse, \
-    UpdateOrganization
+    UpdateOrganization, OrganizationMembersResponse
 from services.organization_service import crate_new_organization, get_organization_details, \
     add_new_members_to_organization, verify_current_user_role, get_organization_details_by_id, \
-    update_organization_details, delete_organizations
+    update_organization_details, delete_organizations, get_organization_members_by_id
 
 # Initialize API router for organization-related endpoints
 router = APIRouter(prefix="/api/v1", tags=["organizations"])
@@ -117,23 +117,32 @@ async def delete_organizations_by_id(current_user: CurrentActiveUserDep,
     await delete_organizations(organization_id=organization_id)
 
 
-@router.get("/organization/{org_id}/members")
+@router.get("/organization/{org_id}/members", response_model=OrganizationMembersResponse)
 async def get_organization_members(current_user: CurrentActiveUserDep,
-                                   org_id: Annotated[str, Path(...)]):
+                                   org_id: Annotated[str, Path(...)],
+                                   page: Annotated[int, Query(ge=1)] = 1,
+                                   size: Annotated[int, Query(ge=10)] = 10,
+                                   sort_by: Annotated[str, Query()] = "joined_at"):
     """
     Retrieve members of an organization by ID.
 
     Args:
         current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
         org_id (str): ID of the organization.
+        page (int): Page number for pagination (minimum value: 1).
+        size (int): Number of items per page (minimum value: 10).
+        sort_by (str): Field to sort the organizations by.
 
     Returns:
         Any: List of organization members (to be implemented).
     """
     log.info("%s %s", current_user.id, org_id)
+    organization_id =UUID(org_id)
+    return await get_organization_members_by_id(organization_id=organization_id,
+                                                page=page, size=size, sort_by=sort_by)
 
 
-@router.post("/organization/{org_id}/members", response_model=AddOrganizationMemberResponse)
+@router.post("/organization/{org_id}/members", response_model=list[AddOrganizationMemberResponse])
 async def add_member_to_organization(current_user: CurrentActiveUserDep,
                                    org_id: Annotated[str, Path(...)],
                                    user_roles: AddOrganizationMembersRequest):

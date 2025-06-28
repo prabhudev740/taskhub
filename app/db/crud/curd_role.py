@@ -9,18 +9,17 @@ from db.models.role import RoleModel, RolePermissionModel
 log = Logging(__name__).log()
 
 
-def create_role(name=str, description=str) -> RoleModel:
+def create_role(role: dict) -> RoleModel:
     """
     Create a new role in the database.
 
     Args:
-        name (str): The name of the role.
-        description (str): A description of the role.
+        role (dict): A dictionary containing role details.
 
     Returns:
         RoleModel: The newly created role.
     """
-    role = RoleModel(name=name, description=description)
+    role = RoleModel(**role)
     session = get_session()
     session.add(role)
     session.commit()
@@ -40,6 +39,23 @@ def get_role_by_name(role_name: str) -> type[RoleModel] | None:
     """
     session = get_session()
     role = session.query(RoleModel).filter_by(name=role_name).first()
+    if not role:
+        return None
+    return role
+
+
+def get_role_by_id(role_id: UUID) -> type[RoleModel] | None:
+    """
+    Retrieve a role by its id.
+
+    Args:
+        role_id (UUID): The id of the role to retrieve.
+
+    Returns:
+        RoleModel | None: The role if found, otherwise None.
+    """
+    session = get_session()
+    role = session.query(RoleModel).filter_by(id=role_id).first()
     if not role:
         return None
     return role
