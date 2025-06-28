@@ -1,4 +1,5 @@
 """ Org CRUD """
+
 from uuid import UUID
 from db.base import get_session
 from db.models.organization import OrganizationModel, OrganizationMemberModel
@@ -141,6 +142,33 @@ def update_organization_member(organization_member_datar: dict) -> OrganizationM
     session.refresh(organization_member)
     return organization_member
 
+def get_organization_members_by_organization_id(organization_id: UUID,
+                                                page: int, size: int, sort_by: str
+                                                ) -> tuple[list[
+                                                    type[OrganizationMemberModel]], int, int]:
+    """
+    Retrieve members of an organization by id.
+
+    Args:
+        organization_id (UUID): The ID of the organization.
+        page (int): The page number for pagination.
+        size (int): The number of items per page.
+        sort_by (str): The field to sort the organizations by (default is "joined_at").
+
+    Returns:
+        tuple: A tuple containing:
+            - list[OrganizationMemberModel]: List of organizations.
+            - int: Total number of organizations.
+            - int: Total number of pages.
+    """
+    session = get_session()
+    items = session.query(OrganizationMemberModel).filter_by(organization_id=organization_id)
+    sorted_members = items.order_by(getattr(OrganizationMemberModel, sort_by))
+    total = sorted_members.count()
+    response_items = sorted_members.offset((page - 1) * size).limit(size).all()
+    pages = (total + size - 1) // size
+    return response_items, total, pages
+
 def get_organization_member_by_organization_user_id(org_id: UUID, user_id: UUID
                                                     ) -> type[OrganizationMemberModel] | None:
     """
@@ -161,7 +189,7 @@ def get_organization_member_by_organization_user_id(org_id: UUID, user_id: UUID
         return None
     return organization_member
 
-def get_organization_member_by_organization_id(org_id: UUID) -> int:
+def get_organization_member_count_by_organization_id(org_id: UUID) -> int:
     """
     Count the number of members in an organization.
 

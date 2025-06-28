@@ -3,6 +3,7 @@ from typing import Annotated
 from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, Field
+from schemas.role import RoleShort
 from schemas.user import UserProfileShort
 
 
@@ -137,11 +138,33 @@ class OrganizationByIDResponse(Organization):
     member_count: int
 
 
-class OrganizationMessageResponse(BaseModel):
+class OrganizationMemberData(BaseModel):
     """
-    Response schema for organization-related messages.
+    Represents data for a member of an organization.
 
     Attributes:
-        message (str): Message content.
+        user (UserProfileShort): Profile details of the user.
+        role (RoleShort): Role details of the user within the organization.
+        joined_at (datetime): Timestamp when the user joined the organization.
     """
-    message: str
+    user: UserProfileShort
+    role: RoleShort
+    joined_at: datetime
+
+
+class OrganizationMembersResponse(BaseModel):
+    """
+    Response schema for members of an organization.
+
+    Attributes:
+        items (list[OrganizationMemberData]): List of organization members' data.
+        total (int): Total number of members.
+        page (int): Current page number.
+        size (int): Number of items per page.
+        pages (int): Total number of pages.
+    """
+    items: list[OrganizationMemberData]
+    total: int
+    page: int
+    size: int
+    pages: int

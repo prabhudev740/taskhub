@@ -6,6 +6,7 @@ from core.permission_config import ORGANIZATION_ROLES, ALL_PERMISSIONS
 from db.crud.crud_permission import create_permissions, get_permission_by_name
 from db.crud.crud_user import get_user_by_username
 from db.crud.curd_role import create_role, update_role_permission, get_role_by_name
+from schemas.role import CreateRoleRequest
 from schemas.user import CreateUser
 from services.user_service import create_new_user
 
@@ -29,7 +30,9 @@ async def create_default_roles_and_permissions():
     """Create default roles and update the role permission table"""
     for role_data in ORGANIZATION_ROLES.values():
         log.info(role_data)
-        created_role = create_role(name=role_data['name'], description=role_data['description'])
+        role = CreateRoleRequest(name=role_data['name'], description=role_data['description'])
+        role = role.model_dump(exclude_unset=True)
+        created_role = create_role(role)
         role_id = created_role.id
         await update_default_role_permission(role_id, role_data['permissions'])
 
@@ -54,6 +57,8 @@ async def db_init():
     # Create roles and assign permissions only if role not present
     for role_data in ORGANIZATION_ROLES.values():
         if not get_role_by_name(role_data['name']):
-            created_role = create_role(name=role_data['name'], description=role_data['description'])
+            role = CreateRoleRequest(name=role_data['name'], description=role_data['description'])
+            role = role.model_dump(exclude_unset=True)
+            created_role = create_role(role)
             role_id = created_role.id
             await update_default_role_permission(role_id, role_data['permissions'])
