@@ -29,7 +29,7 @@ class Organization(BaseModel):
 
 class CreateOrganization(BaseModel):
     """
-    Schema for creating a new organization.
+    Request schema for creating a new organization.
 
     Attributes:
         name (Annotated[str, Field]): Name of the organization
@@ -43,7 +43,7 @@ class CreateOrganization(BaseModel):
 
 class UpdateOrganization(BaseModel):
     """
-    Schema for updating an organization.
+    Request schema for updating an organization.
 
     Attributes:
         name (Annotated[str | None, Field] | None): Updated name of the organization
@@ -82,7 +82,18 @@ class AddOrganizationMembersRequest(BaseModel):
     user_roles: list[OrganizationUserRole]
 
 
-class AddOrganizationMemberResponse(BaseModel):
+class UpdateOrganizationMemberRole(BaseModel):
+    """
+    Request schema for updating a role for organization member.
+
+    Attributes:
+        role_id (UUID): Unique identifier of the role to be assigned.
+    """
+    role_id: Annotated[UUID, Field()]
+
+
+# Response
+class OrganizationMemberResponse(BaseModel):
     """
     Response schema for adding a member to an organization.
 

@@ -6,13 +6,13 @@ from db.crud.crud_organization import get_organization_by_name, update_organizat
     get_organizations_by_member_id, get_organization_by_id, create_organization, \
     get_organization_member_count_by_organization_id, delete_organizations_by_id, \
     get_organization_member_by_organization_user_id, get_organization_members_by_organization_id, \
-    update_organization
+    update_organization, update_organization_member_role
 from db.crud.crud_permission import get_permission_by_name
 from db.crud.crud_user import get_user_by_username, get_user_by_id
 from db.crud.curd_role import get_role_by_name, get_role_permission, get_role_by_id
 from exceptions import http_exceptions
 from schemas.organization import CreateOrganization, Organization, OrganizationResponse, \
-    AddOrganizationMembersRequest, AddOrganizationMemberResponse, OrganizationByIDResponse, \
+    AddOrganizationMembersRequest, OrganizationMemberResponse, OrganizationByIDResponse, \
     UpdateOrganization, OrganizationMembersResponse, OrganizationMemberData
 from schemas.role import RoleShort
 from schemas.user import UserProfileShort, User
@@ -138,15 +138,38 @@ async def get_organization_details_by_id(org_id: UUID, user: User) -> Organizati
                                         organization=organization_data,
                                         user=user)
 
+async def get_role_permissions(role_id: UUID, permission_names: list[str]):
+    """
+    Verify and retrieve the permission associate with given role ID.
 
-async def verify_current_user_role(user_id: UUID, org_id: UUID, permission_name: str):
+    Args:
+        role_id (UUID): The ID of the role.
+        permission_names (list[str]): The list of names of the permissions.
+
+    Returns:
+        Any: The role permission data.
+    """
+    if not permission_names:
+        return []
+
+    permission_name = permission_names.pop()
+    permission = get_permission_by_name(permission_name=permission_name)
+    if not permission:
+        raise http_exceptions.PERMISSION_NOT_FOUND_EXCEPTION
+
+    role_permission = get_role_permission(role_id=role_id, permission_id=permission.id)
+    if not role_permission:
+        raise http_exceptions.FORBIDDEN_EXCEPTION
+    return await get_role_permissions(role_id, permission_names) + [role_permission]
+
+async def verify_current_user_role(user_id: UUID, org_id: UUID, permission_names: list[str]):
     """
     Verify the current user's role and permissions in an organization.
 
     Args:
         user_id (UUID): The ID of the user.
         org_id (UUID): The ID of the organization.
-        permission_name (str): The name of the permission to verify.
+        permission_names (list[str]): The list of names of the permission to verify.
 
     Returns:
         Any: The role permission data.
@@ -154,34 +177,15 @@ async def verify_current_user_role(user_id: UUID, org_id: UUID, permission_name:
     Raises:
         HTTPException: If the organization, permission, or role permission is not found.
     """
-    permission_exception = HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="You do not have permission to perform this action."
-    )
-    organization_not_found_exception = HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Organization associated to current user not found."
-    )
-    permission_not_found_exception = HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Organization associated to current user not found."
-    )
+
     log.info("org_id=%s, user_id=%s", org_id, user_id)
     organization_member = \
         get_organization_member_by_organization_user_id(org_id=org_id, user_id=user_id)
     if not organization_member:
-        raise organization_not_found_exception
-
-    permission = get_permission_by_name(permission_name=permission_name)
-    if not permission:
-        raise permission_not_found_exception
-
-    role_permission = \
-        get_role_permission(role_id=organization_member.role_id, permission_id=permission.id)
-    if not role_permission:
-        raise permission_exception
-
-    return role_permission
+        raise http_exceptions.ORGANIZATION_NOT_FOUND_EXCEPTION
+    role_permissions = await get_role_permissions(role_id=organization_member.role_id,
+                                            permission_names=permission_names)
+    return role_permissions
 
 
 async def update_organization_details(organization_id: UUID, org: UpdateOrganization,
@@ -227,7 +231,7 @@ async def delete_organizations(organization_id: UUID) -> None:
 
 async def add_new_members_to_organization(organization_id: UUID,
                                           user_roles: AddOrganizationMembersRequest
-                                          ) -> list[AddOrganizationMemberResponse]:
+                                          ) -> list[OrganizationMemberResponse]:
     """
     Add new members to an organization.
 
@@ -236,7 +240,7 @@ async def add_new_members_to_organization(organization_id: UUID,
         user_roles (AddOrganizationMembersRequest): The user roles to add.
 
     Returns:
-        list[AddOrganizationMemberResponse]: The list of added organization members.
+        list[OrganizationMemberResponse]: The list of added organization members.
 
     Raises:
         HTTPException: If the user, role, or membership already exists.
@@ -261,7 +265,7 @@ async def add_new_members_to_organization(organization_id: UUID,
     organization_member = \
         {"user_id": user.id, "organization_id": organization_id, "role_id": role.id}
     created_user = update_organization_member(organization_member)
-    current_response = AddOrganizationMemberResponse(
+    current_response = OrganizationMemberResponse(
         user_id=user.id,
         organization_id=organization_id,
         role_id=role.id,
@@ -318,3 +322,44 @@ async def get_organization_members_by_id(organization_id: UUID, page: int,
 
     return OrganizationMembersResponse(items=members,
                                           total=total, page=page, size=size, pages=pages)
+
+
+async def update_organization_member_role_by_id(org_id: UUID, user_id: UUID, role_id: UUID
+                                                ) -> OrganizationMemberResponse:
+    """
+    Update the role of a specific member within an organization.
+
+    Args:
+        org_id (UUID): The ID of the organization.
+        user_id (UUID): The ID of the user whose role is being updated.
+        role_id (UUID): The new role ID to assign to the user.
+
+    Returns:
+        OrganizationMemberResponse: The updated organization member details.
+
+    Raises:
+        HTTPException: If the organization member, role, or user is not found.
+    """
+    org_member = update_organization_member_role(org_id=org_id, user_id=user_id, role_id=role_id)
+    if not org_member:
+        raise http_exceptions.ORGANIZATION_MEMBER_NOT_FOUND_EXCEPTION
+
+    role = get_role_by_id(role_id=org_member.role_id)
+    if not role:
+        raise http_exceptions.ROLE_NOT_FOUND_EXCEPTION
+
+    user = get_user_by_id(user_id=org_member.user_id)
+    if not user:
+        raise http_exceptions.USER_NOT_FOUND_EXCEPTION
+
+    current_response = OrganizationMemberResponse(
+        user_id=org_member.user_id,
+        organization_id=org_member.organization_id,
+        role_id=role_id,
+        role_name=role.name,
+        user_email=user.email,
+        user_full_name=f"{user.first_name} {user.last_name}",
+        status="active",
+        joined_at=org_member.joined_at
+    )
+    return OrganizationMemberResponse.model_validate(current_response)

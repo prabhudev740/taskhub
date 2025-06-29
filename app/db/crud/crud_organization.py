@@ -202,3 +202,26 @@ def get_organization_member_count_by_organization_id(org_id: UUID) -> int:
     session = get_session()
     count = session.query(OrganizationMemberModel).filter_by(organization_id=org_id).count()
     return count
+
+def update_organization_member_role(org_id: UUID, user_id: UUID, role_id: UUID
+                                    ) -> type[OrganizationMemberModel] | None:
+    """
+    Update the role in the organization by organization ID and member ID
+
+    Args:
+        org_id (UUID): The ID of the organization.
+        user_id (UUID): The ID of user in the organization.
+        role_id (UUID): The ID new role.
+
+    Returns:
+        OrganizationMemberModel | None: The organization member if found, otherwise None.
+    """
+    session = get_session()
+    member = session.query(OrganizationMemberModel).filter_by(
+        organization_id=org_id, user_id=user_id).first()
+    if not member:
+        return None
+    setattr(member, "role_id", role_id)
+    session.commit()
+    session.refresh(member)
+    return member

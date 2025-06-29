@@ -45,11 +45,15 @@ EMAIL_ALREADY_EXITS_EXCEPTION = HTTPException(
 
 # Organization Related Exception
 
-
-# Organization Member Related Exception
 ORGANIZATION_NOT_FOUND_EXCEPTION = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND,
     detail="Organization not found."
+)
+
+# Organization Member Related Exception
+ORGANIZATION_MEMBER_NOT_FOUND_EXCEPTION = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail="User not found in the organization."
 )
 
 ORGANIZATION_ALREADY_EXISTS_EXCEPTION = HTTPException(
@@ -64,6 +68,15 @@ ALREADY_MEMBER_EXCEPTION = HTTPException(
 
 
 # Permission Related Exception
+FORBIDDEN_EXCEPTION = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN,
+    detail="You do not have permission to perform this action."
+)
+
+PERMISSION_NOT_FOUND_EXCEPTION = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail="Organization associated to current user not found."
+)
 
 
 # Role Related Exception
