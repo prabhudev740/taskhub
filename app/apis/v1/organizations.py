@@ -7,11 +7,12 @@ from fastapi import APIRouter, Path, Query, status
 from core.dependencies import CurrentActiveUserDep
 from core.logging_conf import Logging
 from schemas.organization import CreateOrganization, OrganizationResponse, Organization, \
-    AddOrganizationMembersRequest, AddOrganizationMemberResponse, OrganizationByIDResponse, \
-    UpdateOrganization, OrganizationMembersResponse
+    AddOrganizationMembersRequest, OrganizationMemberResponse, OrganizationByIDResponse, \
+    UpdateOrganization, OrganizationMembersResponse, UpdateOrganizationMemberRole
 from services.organization_service import crate_new_organization, get_organization_details, \
     add_new_members_to_organization, verify_current_user_role, get_organization_details_by_id, \
-    update_organization_details, delete_organizations, get_organization_members_by_id
+    update_organization_details, delete_organizations, get_organization_members_by_id, \
+    update_organization_member_role_by_id
 
 # Initialize API router for organization-related endpoints
 router = APIRouter(prefix="/api/v1", tags=["organizations"])
@@ -70,7 +71,7 @@ async def get_organizations_by_id(current_user: CurrentActiveUserDep,
     organization_id = UUID(org_id)
     await verify_current_user_role(user_id=current_user.id,
                                    org_id=organization_id,
-                                   permission_name="organization:read_details")
+                                   permission_names=["organization:read_details"])
     return await get_organization_details_by_id(org_id=organization_id, user=current_user)
 
 
@@ -92,7 +93,7 @@ async def update_organizations_by_id(current_user: CurrentActiveUserDep,
     organization_id = UUID(org_id)
     await verify_current_user_role(user_id=current_user.id,
                                    org_id=organization_id,
-                                   permission_name="organization:update_settings")
+                                   permission_names=["organization:update_settings"])
     return await \
         update_organization_details(organization_id=organization_id, org=org, user=current_user)
 
@@ -113,7 +114,7 @@ async def delete_organizations_by_id(current_user: CurrentActiveUserDep,
     organization_id = UUID(org_id)
     await verify_current_user_role(user_id=current_user.id,
                                    org_id=organization_id,
-                                   permission_name="organization:delete")
+                                   permission_names=["organization:delete"])
     await delete_organizations(organization_id=organization_id)
 
 
@@ -142,7 +143,7 @@ async def get_organization_members(current_user: CurrentActiveUserDep,
                                                 page=page, size=size, sort_by=sort_by)
 
 
-@router.post("/organization/{org_id}/members", response_model=list[AddOrganizationMemberResponse])
+@router.post("/organization/{org_id}/members", response_model=list[OrganizationMemberResponse])
 async def add_member_to_organization(current_user: CurrentActiveUserDep,
                                    org_id: Annotated[str, Path(...)],
                                    user_roles: AddOrganizationMembersRequest):
@@ -155,18 +156,22 @@ async def add_member_to_organization(current_user: CurrentActiveUserDep,
         user_roles (AddOrganizationMembersRequest): Roles and details of the user to add.
 
     Returns:
-        AddOrganizationMemberResponse: Response indicating the result of the operation.
+        OrganizationMemberResponse: Response indicating the result of the operation.
     """
     org_id = UUID(org_id)
     await verify_current_user_role(user_id=current_user.id,
                                    org_id=org_id,
-                                   permission_name="organization:manage_members")
+                                   permission_names=['organization:manage_members',
+                                                     'organization:manage_roles',])
     return await add_new_members_to_organization(user_roles=user_roles, organization_id=org_id)
 
 
-@router.put("/organizations/{org_id}/members/{user_id}/role")
-def get_members_role(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)],
-                     user_id: Annotated[str, Path(...)]):
+@router.put("/organizations/{org_id}/members/{user_id}/role",
+            response_model=OrganizationMemberResponse)
+async def update_members_role(current_user: CurrentActiveUserDep,
+                        org_id: Annotated[str, Path(...)],
+                        user_id: Annotated[str, Path(...)],
+                        update_role: UpdateOrganizationMemberRole):
     """
     Assign or update a user's role within an organization.
 
@@ -174,11 +179,18 @@ def get_members_role(current_user: CurrentActiveUserDep, org_id: Annotated[str, 
         current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
         org_id (str): ID of the organization.
         user_id (str): ID of the user whose role is being updated.
+        update_role (UpdateOrganizationMemberRole): Contains the role_id to be updated.
 
     Returns:
         Any: Result of the role update operation (to be implemented).
     """
     log.info("%s %s %s", current_user.id, org_id, user_id)
+    org_id, user_id = UUID(org_id), UUID(user_id)
+    await verify_current_user_role(user_id=current_user.id,
+                                   org_id=org_id,
+                                   permission_names=["organization:manage_roles"])
+    return await update_organization_member_role_by_id(org_id=org_id,
+                                                    user_id=user_id, role_id=update_role.role_id)
 
 
 @router.delete("/organizations/{org_id}/members/{user_id}")
