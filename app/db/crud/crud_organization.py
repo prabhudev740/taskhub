@@ -225,3 +225,24 @@ def update_organization_member_role(org_id: UUID, user_id: UUID, role_id: UUID
     session.commit()
     session.refresh(member)
     return member
+
+def delete_organization_member_by_id(user_id: UUID, organization_id: UUID) -> bool:
+    """
+    Remove the user from organization by member ID.
+
+    Args:
+        user_id (UUID): The ID of user to remove.
+        organization_id (UUID): The ID of organization where user to be removed.
+
+    Returns:
+        bool: Returns False if the organization is not found, else True.
+    """
+    session = get_session()
+    organization_member = \
+        session.query(OrganizationMemberModel).filter_by(organization_id=organization_id,
+                                                         user_id=user_id).first()
+    if not organization_member:
+        return False
+    session.delete(organization_member)
+    session.commit()
+    return True
