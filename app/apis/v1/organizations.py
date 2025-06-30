@@ -12,7 +12,7 @@ from schemas.organization import CreateOrganization, OrganizationResponse, Organ
 from services.organization_service import crate_new_organization, get_organization_details, \
     add_new_members_to_organization, verify_current_user_role, get_organization_details_by_id, \
     update_organization_details, delete_organizations, get_organization_members_by_id, \
-    update_organization_member_role_by_id
+    update_organization_member_role_by_id, delete_member_from_organization
 
 # Initialize API router for organization-related endpoints
 router = APIRouter(prefix="/api/v1", tags=["organizations"])
@@ -193,8 +193,8 @@ async def update_members_role(current_user: CurrentActiveUserDep,
                                                     user_id=user_id, role_id=update_role.role_id)
 
 
-@router.delete("/organizations/{org_id}/members/{user_id}")
-def remove_user_from_organization(current_user: CurrentActiveUserDep,
+@router.delete("/organizations/{org_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_user_from_organization(current_user: CurrentActiveUserDep,
                                   org_id: Annotated[str, Path(...)],
                                   user_id: Annotated[str, Path(...)]):
     """
@@ -202,13 +202,17 @@ def remove_user_from_organization(current_user: CurrentActiveUserDep,
 
     Args:
         current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
-        org_id (str): ID of the organization.
-        user_id (str): ID of the user to remove.
+        org_id (str): The ID of the organization.
+        user_id (str): The ID of the user to remove.
 
     Returns:
-        Any: Result of the removal operation (to be implemented).
+        None: Indicates successful deletion.
     """
     log.info("%s %s %s", current_user.id, org_id, user_id)
+    user_id, org_id = UUID(user_id), UUID(org_id)
+    await verify_current_user_role(user_id=user_id, org_id=org_id,
+                                   permission_names=['organization:manage_members'])
+    await delete_member_from_organization(user_id=user_id, organization_id=org_id)
 
 
 @router.get("/organizations/{org_id}/roles")

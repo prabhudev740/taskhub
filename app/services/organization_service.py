@@ -6,7 +6,7 @@ from db.crud.crud_organization import get_organization_by_name, update_organizat
     get_organizations_by_member_id, get_organization_by_id, create_organization, \
     get_organization_member_count_by_organization_id, delete_organizations_by_id, \
     get_organization_member_by_organization_user_id, get_organization_members_by_organization_id, \
-    update_organization, update_organization_member_role
+    update_organization, update_organization_member_role, delete_organization_member_by_id
 from db.crud.crud_permission import get_permission_by_name
 from db.crud.crud_user import get_user_by_username, get_user_by_id
 from db.crud.curd_role import get_role_by_name, get_role_permission, get_role_by_id
@@ -363,3 +363,18 @@ async def update_organization_member_role_by_id(org_id: UUID, user_id: UUID, rol
         joined_at=org_member.joined_at
     )
     return OrganizationMemberResponse.model_validate(current_response)
+
+async def delete_member_from_organization(user_id: UUID, organization_id: UUID) -> None:
+    """
+    Remove the user from the organization.
+
+    Args:
+        user_id (UUID): The ID of user to remove.
+        organization_id (UUID): The ID of organization where user to be removed.
+
+    Raises:
+        HTTPException: If the organization is not found.
+    """
+    deleted = delete_organization_member_by_id(user_id=user_id, organization_id=organization_id)
+    if not deleted:
+        raise http_exceptions.ORGANIZATION_MEMBER_NOT_FOUND_EXCEPTION
