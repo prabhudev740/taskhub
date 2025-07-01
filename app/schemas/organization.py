@@ -92,7 +92,7 @@ class UpdateOrganizationMemberRole(BaseModel):
     role_id: Annotated[UUID, Field()]
 
 
-# Response
+# Response Schema
 class OrganizationMemberResponse(BaseModel):
     """
     Response schema for adding a member to an organization.

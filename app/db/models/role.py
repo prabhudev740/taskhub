@@ -32,17 +32,17 @@ class RoleModel(Base):
         name (str): Name of the role (must be unique).
         description (str): Optional description of the role.
         is_system_role (bool): Indicates if the role is a system role.
-        organization_id (str): ID of the associated organization (optional).
+        organization_id (UUID): ID of the associated organization (optional).
         organization_members (relationship): Relationship to organization members.
         permissions (relationship): Relationship to permissions associated with the role.
     """
     __tablename__ = "roles"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String(64), unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
     is_system_role = Column(Boolean, default=False, nullable=False)
-    organization_id = Column(String, ForeignKey("organizations.id"), nullable=True)
+    organization_id = Column(UUID, ForeignKey("organizations.id"), nullable=True)
 
     organization_members = relationship("OrganizationMemberModel", back_populates="role")
     permissions = relationship("PermissionModel",

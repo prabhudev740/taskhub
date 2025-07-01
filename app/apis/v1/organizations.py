@@ -9,10 +9,12 @@ from core.logging_conf import Logging
 from schemas.organization import CreateOrganization, OrganizationResponse, Organization, \
     AddOrganizationMembersRequest, OrganizationMemberResponse, OrganizationByIDResponse, \
     UpdateOrganization, OrganizationMembersResponse, UpdateOrganizationMemberRole
+from schemas.role import RoleResponse, CreateCustomRole
 from services.organization_service import crate_new_organization, get_organization_details, \
     add_new_members_to_organization, verify_current_user_role, get_organization_details_by_id, \
     update_organization_details, delete_organizations, get_organization_members_by_id, \
-    update_organization_member_role_by_id, delete_member_from_organization
+    update_organization_member_role_by_id, delete_member_from_organization, create_new_role
+
 
 # Initialize API router for organization-related endpoints
 router = APIRouter(prefix="/api/v1", tags=["organizations"])
@@ -230,19 +232,25 @@ def get_x(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)])
     log.info("%s %s", current_user.id, org_id)
 
 
-@router.post("/organizations/{org_id}/roles")
-def post_x(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)]):
+@router.post("/organizations/{org_id}/roles", response_model=RoleResponse)
+async def create_custom_roles(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)],
+                        new_role: CreateCustomRole):
     """
     Create a custom role within an organization.
 
     Args:
         current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
         org_id (str): ID of the organization.
+        new_role (CreateCustomRole): Role to be created.
 
     Returns:
         Any: Result of the role creation operation (to be implemented).
     """
     log.info("%s %s", current_user.id, org_id)
+    organization_id = UUID(org_id)
+    await verify_current_user_role(user_id=current_user.id, org_id=organization_id,
+                                   permission_names=["organization:create_custom_roles"])
+    return await create_new_role(organization_id=organization_id, new_role=new_role)
 
 
 @router.get("/organizations/{org_id}/permissions")

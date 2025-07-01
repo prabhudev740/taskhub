@@ -84,3 +84,8 @@ ROLE_NOT_FOUND_EXCEPTION = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND,
     detail="Given role not found."
 )
+
+ROLE_ALREADY_EXITS_EXCEPTION = HTTPException(
+    status_code=status.HTTP_409_CONFLICT,
+    detail="Role already exists."
+)
