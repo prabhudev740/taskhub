@@ -7,14 +7,15 @@ from db.crud.crud_organization import get_organization_by_name, update_organizat
     get_organization_member_count_by_organization_id, delete_organizations_by_id, \
     get_organization_member_by_organization_user_id, get_organization_members_by_organization_id, \
     update_organization, update_organization_member_role, delete_organization_member_by_id
-from db.crud.crud_permission import get_permission_by_name
+from db.crud.crud_permission import get_permission_by_name, get_permission_by_id
 from db.crud.crud_user import get_user_by_username, get_user_by_id
-from db.crud.curd_role import get_role_by_name, get_role_permission, get_role_by_id
+from db.crud.curd_role import get_role_by_name, get_role_permission, get_role_by_id, create_role, \
+    update_role_permission
 from exceptions import http_exceptions
 from schemas.organization import CreateOrganization, Organization, OrganizationResponse, \
     AddOrganizationMembersRequest, OrganizationMemberResponse, OrganizationByIDResponse, \
     UpdateOrganization, OrganizationMembersResponse, OrganizationMemberData
-from schemas.role import RoleShort
+from schemas.role import RoleShort, RoleResponse, CreateCustomRole, CreateRole, Permission
 from schemas.user import UserProfileShort, User
 
 
@@ -138,7 +139,7 @@ async def get_organization_details_by_id(org_id: UUID, user: User) -> Organizati
                                         organization=organization_data,
                                         user=user)
 
-async def get_role_permissions(role_id: UUID, permission_names: list[str]):
+async def get_verified_role_permissions(role_id: UUID, permission_names: list[str]):
     """
     Verify and retrieve the permission associate with given role ID.
 
@@ -160,7 +161,8 @@ async def get_role_permissions(role_id: UUID, permission_names: list[str]):
     role_permission = get_role_permission(role_id=role_id, permission_id=permission.id)
     if not role_permission:
         raise http_exceptions.FORBIDDEN_EXCEPTION
-    return await get_role_permissions(role_id, permission_names) + [role_permission]
+
+    return await get_verified_role_permissions(role_id, permission_names) + [role_permission]
 
 async def verify_current_user_role(user_id: UUID, org_id: UUID, permission_names: list[str]):
     """
@@ -183,13 +185,13 @@ async def verify_current_user_role(user_id: UUID, org_id: UUID, permission_names
         get_organization_member_by_organization_user_id(org_id=org_id, user_id=user_id)
     if not organization_member:
         raise http_exceptions.ORGANIZATION_NOT_FOUND_EXCEPTION
-    role_permissions = await get_role_permissions(role_id=organization_member.role_id,
-                                            permission_names=permission_names)
+    role_permissions = await get_verified_role_permissions(role_id=organization_member.role_id,
+                                                           permission_names=permission_names)
     return role_permissions
 
 
 async def update_organization_details(organization_id: UUID, org: UpdateOrganization,
-                                user: User) -> OrganizationByIDResponse:
+                                      user: User) -> OrganizationByIDResponse:
     """
     Update the details of an organization.
 
@@ -364,6 +366,7 @@ async def update_organization_member_role_by_id(org_id: UUID, user_id: UUID, rol
     )
     return OrganizationMemberResponse.model_validate(current_response)
 
+
 async def delete_member_from_organization(user_id: UUID, organization_id: UUID) -> None:
     """
     Remove the user from the organization.
@@ -378,3 +381,63 @@ async def delete_member_from_organization(user_id: UUID, organization_id: UUID) 
     deleted = delete_organization_member_by_id(user_id=user_id, organization_id=organization_id)
     if not deleted:
         raise http_exceptions.ORGANIZATION_MEMBER_NOT_FOUND_EXCEPTION
+
+async def map_role_permissions(role_id: UUID, permissions: list[str | UUID]) -> None:
+    """Update the role_permission table"""
+    if not permissions:
+        return None
+    permission = permissions[0]
+    if isinstance(permission, str):
+        permission = get_permission_by_name(permission_name=permission)
+        if not permission:
+            raise http_exceptions.ROLE_NOT_FOUND_EXCEPTION
+        update_role_permission(role_id=role_id, permission_id=permission.id)
+    else:
+        update_role_permission(role_id=role_id, permission_id=permission)
+    return await map_role_permissions(role_id=role_id, permissions=permissions[1:])
+
+
+async def create_new_role(organization_id: UUID, new_role: CreateCustomRole
+                          ) -> RoleResponse:
+    """
+    Create a new custom role for the organization.
+
+    Args:
+        organization_id (UUID): The ID of the organization.
+        new_role (CreateCustomRole): Role data to create a custom role.
+
+    Raises:
+        HTTPException: Permission not found or Role already exists.
+
+    Returns:
+        RoleResponse: The response after organization creation.
+    """
+    # create role
+    existing_role = get_role_by_name(role_name=new_role.name)
+    if existing_role and existing_role.organization_id == organization_id:
+        raise http_exceptions.ROLE_ALREADY_EXITS_EXCEPTION
+    role_data = CreateRole(name=new_role.name, description=new_role.description,
+                           organization_id=organization_id)
+    role_dict = role_data.model_dump(exclude_unset=True)
+    created_role = create_role(role=role_dict)
+    await map_role_permissions(role_id=created_role.id, permissions=new_role.permission_ids)
+    permissions = []
+    for permission_id in new_role.permission_ids:
+        permission = get_permission_by_id(permission_id=permission_id)
+        if not permission:
+            raise http_exceptions.PERMISSION_NOT_FOUND_EXCEPTION
+        permission_data = {
+            "id": permission.id,
+            "name": permission.name,
+            "description": permission.description,
+        }
+        permissions.append(Permission.model_validate(permission_data))
+    response_role = {
+      "id": created_role.id,
+      "name": created_role.name,
+      "description": created_role.description,
+      "organization_id": created_role.organization_id,
+      "is_system_role": created_role.is_system_role,
+      "permissions": permissions
+    }
+    return RoleResponse.model_validate(response_role)

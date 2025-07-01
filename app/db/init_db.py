@@ -1,13 +1,13 @@
 """ DB during setup"""
 
-from uuid import UUID
 from core.logging_conf import Logging
 from core.permission_config import ORGANIZATION_ROLES, ALL_PERMISSIONS
 from db.crud.crud_permission import create_permissions, get_permission_by_name
 from db.crud.crud_user import get_user_by_username
-from db.crud.curd_role import create_role, update_role_permission, get_role_by_name
-from schemas.role import CreateRoleRequest
+from db.crud.curd_role import create_role, get_role_by_name
+from schemas.role import CreateRole
 from schemas.user import CreateUser
+from services.organization_service import map_role_permissions
 from services.user_service import create_new_user
 
 log = Logging(__name__).log()
@@ -19,22 +19,15 @@ async def create_organization_permission():
         create_permissions(permission_data=perm)
 
 
-async def update_default_role_permission(role_id: UUID, permissions: list[str]):
-    """Update the role_permission table"""
-    for perm_name in permissions:
-        permission = get_permission_by_name(permission_name=perm_name)
-        update_role_permission(role_id, permission.id)
-
-
 async def create_default_roles_and_permissions():
     """Create default roles and update the role permission table"""
     for role_data in ORGANIZATION_ROLES.values():
         log.info(role_data)
-        role = CreateRoleRequest(name=role_data['name'], description=role_data['description'])
+        role = CreateRole(name=role_data['name'], description=role_data['description'])
         role = role.model_dump(exclude_unset=True)
         created_role = create_role(role)
         role_id = created_role.id
-        await update_default_role_permission(role_id, role_data['permissions'])
+        await map_role_permissions(role_id, role_data['permissions'])
 
 
 async def db_init():
@@ -57,8 +50,8 @@ async def db_init():
     # Create roles and assign permissions only if role not present
     for role_data in ORGANIZATION_ROLES.values():
         if not get_role_by_name(role_data['name']):
-            role = CreateRoleRequest(name=role_data['name'], description=role_data['description'])
+            role = CreateRole(name=role_data['name'], description=role_data['description'])
             role = role.model_dump(exclude_unset=True)
             created_role = create_role(role)
             role_id = created_role.id
-            await update_default_role_permission(role_id, role_data['permissions'])
+            await map_role_permissions(role_id, role_data['permissions'])

@@ -1,4 +1,5 @@
 """ Doc """
+from uuid import UUID
 from db.base import get_session
 from db.models.permission import PermissionModel
 
@@ -33,6 +34,22 @@ def get_permission_by_name(permission_name: str) -> type[PermissionModel] | None
     """
     session = get_session()
     permission = session.query(PermissionModel).filter_by(name=permission_name).first()
+    if not permission:
+        return None
+    return permission
+
+def get_permission_by_id(permission_id: UUID) -> type[PermissionModel] | None:
+    """
+    Retrieve a permission by its name.
+
+    Args:
+        permission_id (str): The name of the permission to retrieve.
+
+    Returns:
+        type[PermissionModel] | None: The permission if found, otherwise None.
+    """
+    session = get_session()
+    permission = session.query(PermissionModel).filter_by(id=permission_id).first()
     if not permission:
         return None
     return permission

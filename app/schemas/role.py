@@ -16,8 +16,22 @@ class RoleShort(BaseModel):
     id: UUID
     name: str
 
+
+class Permission(BaseModel):
+    """
+    Permission schema for validation.
+
+    Attributes:
+        id (UUID): The ID of the organization.
+        name (str): The name of the organization.
+        description (str): The description of the organization.
+    """
+    id: UUID
+    name: str
+    description: str | None
+
 # Request Schema
-class CreateRoleRequest(BaseModel):
+class CreateRole(BaseModel):
     """
     Schema for creating a new role.
 
@@ -32,5 +46,37 @@ class CreateRoleRequest(BaseModel):
     is_system_role: Annotated[bool, Field()] = False
     organization_id: Annotated[UUID | None, Field()] = None
 
+
+class CreateCustomRole(BaseModel):
+    """
+    Request schema for creating custom roles.
+
+    Attributes:
+        name (str): Name of the new role (min_length=5, max_length=64)
+        description (str): Description for new role.
+        permission_ids (list[UUID]): The list of permission ID.
+    """
+    name: Annotated[str, Field(min_length=5, max_length=64)]
+    description: Annotated[str | None, Field(default=None)]
+    permission_ids: Annotated[list[UUID], Field()]
+
+
 # Response Schema
-# (No response schema defined yet)
+class RoleResponse(BaseModel):
+    """
+    Response schema for organization role.
+
+    Attributes:
+        id (UUID): The ID of the Role.
+        name (str): The name of the role.
+        description (str): Description fot the role.
+        organization_id (UUID): The ID of the organization.
+        is_system_role (bool): True if system role, else False
+        permissions (list[Permission]): List ot Permission model
+    """
+    id: UUID
+    name: str
+    description: str | None
+    organization_id: UUID
+    is_system_role: bool
+    permissions: list[Permission]
