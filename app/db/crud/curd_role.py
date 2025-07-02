@@ -27,7 +27,7 @@ def create_role(role: dict) -> RoleModel:
     return role
 
 
-def get_role_by_name(role_name: str) -> type[RoleModel] | None:
+def get_role_by_name(role_name: str) -> list[type[RoleModel]] | None:
     """
     Retrieve a role by its name.
 
@@ -38,7 +38,23 @@ def get_role_by_name(role_name: str) -> type[RoleModel] | None:
         RoleModel | None: The role if found, otherwise None.
     """
     session = get_session()
-    role = session.query(RoleModel).filter_by(name=role_name).first()
+    roles = session.query(RoleModel).filter_by(name=role_name).all()
+    if not roles:
+        return None
+    return roles
+
+def get_role_by_role_name_org_id(role_name: str, org_id: UUID) -> type[RoleModel] | None:
+    """
+    Retrieve a role by its name.
+
+    Args:
+        role_name (str): The name of the role to retrieve.
+        org_id (UUID): The ID of the organization.
+    Returns:
+        RoleModel | None: The role if found, otherwise None.
+    """
+    session = get_session()
+    role = session.query(RoleModel).filter_by(name=role_name, organization_id=org_id).first()
     if not role:
         return None
     return role

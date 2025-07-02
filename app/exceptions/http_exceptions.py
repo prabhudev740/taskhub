@@ -75,7 +75,7 @@ FORBIDDEN_EXCEPTION = HTTPException(
 
 PERMISSION_NOT_FOUND_EXCEPTION = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND,
-    detail="Organization associated to current user not found."
+    detail="Invalid Permission."
 )
 
 

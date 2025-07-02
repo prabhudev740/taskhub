@@ -2,15 +2,16 @@
 from uuid import UUID
 from fastapi import HTTPException, status
 from core.logging_conf import Logging
+from core.permission_config import ORGANIZATION_ROLES, ALL_PERMISSIONS
 from db.crud.crud_organization import get_organization_by_name, update_organization_member, \
     get_organizations_by_member_id, get_organization_by_id, create_organization, \
     get_organization_member_count_by_organization_id, delete_organizations_by_id, \
     get_organization_member_by_organization_user_id, get_organization_members_by_organization_id, \
     update_organization, update_organization_member_role, delete_organization_member_by_id
-from db.crud.crud_permission import get_permission_by_name, get_permission_by_id
+from db.crud.crud_permission import get_permission_by_name, get_permission_by_id, create_permissions
 from db.crud.crud_user import get_user_by_username, get_user_by_id
-from db.crud.curd_role import get_role_by_name, get_role_permission, get_role_by_id, create_role, \
-    update_role_permission
+from db.crud.curd_role import get_role_permission, get_role_by_id, create_role, \
+    update_role_permission, get_role_by_role_name_org_id
 from exceptions import http_exceptions
 from schemas.organization import CreateOrganization, Organization, OrganizationResponse, \
     AddOrganizationMembersRequest, OrganizationMemberResponse, OrganizationByIDResponse, \
@@ -20,6 +21,53 @@ from schemas.user import UserProfileShort, User
 
 
 log = Logging(__name__).log()
+
+async def map_role_permissions(role_id: UUID, permissions: list[str | UUID]) -> None:
+    """
+    Update the role_permission table.
+
+    Args:
+        role_id (UUID): The ID of the role.
+        permissions (list[str | UUID]): List of permissions (names or UUIDs)
+
+    Raises:
+        HTTPException: If invalid permission Name of ID provided.
+    """
+    if not permissions:
+        return None
+    permission = permissions[0]
+    if isinstance(permission, str):
+        permission = get_permission_by_name(permission_name=permission)
+    else:
+        permission = get_permission_by_id(permission_id=permission)
+
+    if not permission:
+        raise http_exceptions.PERMISSION_NOT_FOUND_EXCEPTION
+    update_role_permission(role_id=role_id, permission_id=permission.id)
+    return await map_role_permissions(role_id=role_id, permissions=permissions[1:])
+
+
+async def create_default_organization_role_permissions(organization_id: UUID):
+    """
+    Create Default roles and permissions the for the organization.
+
+    Args:
+        organization_id (UUID): The ID of the organization.
+    """
+    # Create permissions only if not present
+    for perm in ALL_PERMISSIONS:
+        if not get_permission_by_name(permission_name=perm['name']):
+            create_permissions(permission_data=perm)
+
+    # Create roles and assign permissions only if role not present
+    for role_data in ORGANIZATION_ROLES.values():
+        if not get_role_by_role_name_org_id(role_data['name'], org_id=organization_id):
+            role = CreateRole(name=role_data['name'], description=role_data['description'],
+                              organization_id=organization_id)
+            role = role.model_dump(exclude_unset=True)
+            created_role = create_role(role)
+            role_id = created_role.id
+            await map_role_permissions(role_id, role_data['permissions'])
 
 
 async def add_new_organization_member(current_user_id, organization_id, role_name: str):
@@ -41,7 +89,7 @@ async def add_new_organization_member(current_user_id, organization_id, role_nam
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Given role not found."
     )
-    role = get_role_by_name(role_name=role_name)
+    role = get_role_by_role_name_org_id(role_name=role_name, org_id=organization_id)
     if not role:
         raise role_not_found_exception
     organization_member = {"user_id": current_user_id,
@@ -68,6 +116,7 @@ async def crate_new_organization(org: CreateOrganization, current_user_id: UUID)
     organization_data = org.model_dump(exclude_unset=True)
     organization_data.update({"owner_id": current_user_id})
     organization = create_organization(organization_data)
+    await create_default_organization_role_permissions(organization_id=organization.id)
     await add_new_organization_member(current_user_id, organization.id, "Owner")
     return Organization.model_validate(organization)
 
@@ -260,7 +309,7 @@ async def add_new_members_to_organization(organization_id: UUID,
                                                                       user_id=user.id)
     if existing_member:
         raise http_exceptions.ALREADY_MEMBER_EXCEPTION
-    role = get_role_by_name(role_name=user_role.role_name)
+    role = get_role_by_role_name_org_id(role_name=user_role.role_name, org_id=organization_id)
     if not role:
         raise http_exceptions.ROLE_NOT_FOUND_EXCEPTION
 
@@ -382,19 +431,7 @@ async def delete_member_from_organization(user_id: UUID, organization_id: UUID) 
     if not deleted:
         raise http_exceptions.ORGANIZATION_MEMBER_NOT_FOUND_EXCEPTION
 
-async def map_role_permissions(role_id: UUID, permissions: list[str | UUID]) -> None:
-    """Update the role_permission table"""
-    if not permissions:
-        return None
-    permission = permissions[0]
-    if isinstance(permission, str):
-        permission = get_permission_by_name(permission_name=permission)
-        if not permission:
-            raise http_exceptions.ROLE_NOT_FOUND_EXCEPTION
-        update_role_permission(role_id=role_id, permission_id=permission.id)
-    else:
-        update_role_permission(role_id=role_id, permission_id=permission)
-    return await map_role_permissions(role_id=role_id, permissions=permissions[1:])
+
 
 
 async def create_new_role(organization_id: UUID, new_role: CreateCustomRole
@@ -413,7 +450,7 @@ async def create_new_role(organization_id: UUID, new_role: CreateCustomRole
         RoleResponse: The response after organization creation.
     """
     # create role
-    existing_role = get_role_by_name(role_name=new_role.name)
+    existing_role = get_role_by_role_name_org_id(role_name=new_role.name, org_id=organization_id)
     if existing_role and existing_role.organization_id == organization_id:
         raise http_exceptions.ROLE_ALREADY_EXITS_EXCEPTION
     role_data = CreateRole(name=new_role.name, description=new_role.description,

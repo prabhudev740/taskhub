@@ -2,9 +2,9 @@
 
 from core.logging_conf import Logging
 from core.permission_config import ORGANIZATION_ROLES, ALL_PERMISSIONS
-from db.crud.crud_permission import create_permissions, get_permission_by_name
+from db.crud.crud_permission import create_permissions
 from db.crud.crud_user import get_user_by_username
-from db.crud.curd_role import create_role, get_role_by_name
+from db.crud.curd_role import create_role
 from schemas.role import CreateRole
 from schemas.user import CreateUser
 from services.organization_service import map_role_permissions
@@ -41,17 +41,3 @@ async def db_init():
     )
     if not get_user_by_username(username=admin_data.username):
         await create_new_user(admin_data, is_superuser=True)
-
-    # Create permissions only if not present
-    for perm in ALL_PERMISSIONS:
-        if not get_permission_by_name(permission_name=perm['name']):
-            create_permissions(permission_data=perm)
-
-    # Create roles and assign permissions only if role not present
-    for role_data in ORGANIZATION_ROLES.values():
-        if not get_role_by_name(role_data['name']):
-            role = CreateRole(name=role_data['name'], description=role_data['description'])
-            role = role.model_dump(exclude_unset=True)
-            created_role = create_role(role)
-            role_id = created_role.id
-            await map_role_permissions(role_id, role_data['permissions'])
