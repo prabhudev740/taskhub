@@ -99,6 +99,7 @@ class RoleResponse(BaseModel):
     is_system_role: bool
     permissions: list[Permission]
 
+
 class AllRoleResponse(BaseModel):
     """
     Response schema for roles in an organization.
@@ -107,3 +108,15 @@ class AllRoleResponse(BaseModel):
         items (list[RoleResponse]): The list of roles in the organization.
     """
     items: list[RoleResponse]
+
+
+class PermissionsResponse(BaseModel):
+    """
+    Response schema for all permission in an organization.
+
+    Attributes:
+        items (list[Permission]): List of all the Permissions.
+        total (int): Count of permission defined in the organization.
+    """
+    items: list[Permission]
+    total: int

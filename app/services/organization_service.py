@@ -18,7 +18,7 @@ from schemas.organization import CreateOrganization, Organization, OrganizationR
     AddOrganizationMembersRequest, OrganizationMemberResponse, OrganizationByIDResponse, \
     UpdateOrganization, OrganizationMembersResponse, OrganizationMemberData
 from schemas.role import RoleShort, RoleResponse, CreateCustomRole, CreateRole, Permission, \
-    AllRoleResponse, Role
+    AllRoleResponse, Role, PermissionsResponse
 from schemas.user import UserProfileShort, User
 
 
@@ -434,6 +434,42 @@ async def delete_member_from_organization(user_id: UUID, organization_id: UUID) 
         raise http_exceptions.ORGANIZATION_MEMBER_NOT_FOUND_EXCEPTION
 
 
+async def get_permission_response(permission_id: UUID) -> dict:
+    """
+    Retrieve the permission by permission ID and return as dict
+
+    Args:
+        permission_id (UUID): The ID of the permission needs to br retrieved.
+
+    Returns:
+        dict: Returns the validated dict.
+    """
+    permission = get_permission_by_id(permission_id=permission_id)
+    if not permission:
+        raise http_exceptions.PERMISSION_NOT_FOUND_EXCEPTION
+    permission_data = {
+            "id": permission.id,
+            "name": permission.name,
+            "description": permission.description
+        }
+    return permission_data
+
+async def get_permissions_response(permission_ids: list[UUID]) -> list[dict] | list[Permission]:
+    """
+    Retrieve list of all Permissions defined in the organization.
+    Args:
+        permission_ids (list[UUID]): List of permission IDs.
+
+    Returns:
+        list[dict] | list[Permission]: List of permission as Permission object or dict object.
+    """
+    permissions = []
+    for permission_id in permission_ids:
+        permission = await get_permission_response(permission_id=permission_id)
+        permissions.append(Permission.model_validate(permission))
+    return permissions
+
+
 async def get_role_response(role: Role, permission_ids: list[UUID]) -> dict:
     """
     Generate the Role Response for given role and permission ids.
@@ -448,17 +484,7 @@ async def get_role_response(role: Role, permission_ids: list[UUID]) -> dict:
     Returns:
         dict: The Role response.
     """
-    permissions = []
-    for permission_id in permission_ids:
-        permission = get_permission_by_id(permission_id=permission_id)
-        if not permission:
-            raise http_exceptions.PERMISSION_NOT_FOUND_EXCEPTION
-        permission_data = {
-            "id": permission.id,
-            "name": permission.name,
-            "description": permission.description,
-        }
-        permissions.append(Permission.model_validate(permission_data))
+    permissions = await get_permissions_response(permission_ids=permission_ids)
     response_role = {
       "id": role.id,
       "name": role.name,
@@ -519,3 +545,23 @@ async def get_organization_roles(organization_id: UUID) -> AllRoleResponse:
         response_roles.append(response_role)
     response = {"items": response_roles}
     return AllRoleResponse.model_validate(response)
+
+
+async def get_all_permissions(organization_id: UUID) -> PermissionsResponse:
+    """
+    Get all permissions for given organization ID.
+    Args:
+        organization_id (UUID): The ID of the organization.
+
+    Returns:
+        PermissionsResponse: Schema validated permission response.
+    """
+    roles = get_all_organization_roles(organization_id=organization_id)
+    response_permissions = []
+    for role in roles:
+        permission_ids = get_permission_ids_for_role(role_id=role.id)
+        permission_ids = list(set(permission_ids))
+        response_permission = await get_permissions_response(permission_ids=permission_ids)
+        response_permissions.extend(response_permission)
+    response = {"items": response_permissions, "total": len(response_permissions)}
+    return PermissionsResponse.model_validate(response)

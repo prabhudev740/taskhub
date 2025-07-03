@@ -9,12 +9,12 @@ from core.logging_conf import Logging
 from schemas.organization import CreateOrganization, OrganizationResponse, Organization, \
     AddOrganizationMembersRequest, OrganizationMemberResponse, OrganizationByIDResponse, \
     UpdateOrganization, OrganizationMembersResponse, UpdateOrganizationMemberRole
-from schemas.role import RoleResponse, CreateCustomRole, AllRoleResponse
+from schemas.role import RoleResponse, CreateCustomRole, AllRoleResponse, PermissionsResponse
 from services.organization_service import crate_new_organization, get_organization_details, \
     add_new_members_to_organization, verify_current_user_role, get_organization_details_by_id, \
     update_organization_details, delete_organizations, get_organization_members_by_id, \
     update_organization_member_role_by_id, delete_member_from_organization, create_new_role, \
-    get_organization_roles
+    get_organization_roles, get_all_permissions
 
 # Initialize API router for organization-related endpoints
 router = APIRouter(prefix="/api/v1", tags=["organizations"])
@@ -258,10 +258,11 @@ async def create_custom_roles(current_user: CurrentActiveUserDep, org_id: Annota
     return await create_new_role(organization_id=organization_id, new_role=new_role)
 
 
-@router.get("/organizations/{org_id}/permissions")
-def get_y(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)]):
+@router.get("/organizations/{org_id}/permissions", response_model=PermissionsResponse)
+async def get_organization_permissions(current_user: CurrentActiveUserDep,
+                                       org_id: Annotated[str, Path(...)]):
     """
-    List available permissions for role definition within an organization.
+     Lists all system-defined permissions that can be assigned to roles within an organization.
 
     Args:
         current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
@@ -271,18 +272,7 @@ def get_y(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)])
         Any: List of permissions (to be implemented).
     """
     log.info("%s %s", current_user.id, org_id)
-
-
-@router.put("/organizations/{org_id}/permissions")
-def update_role_permission(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)]):
-    """
-    Update permissions for role definition within an organization.
-
-    Args:
-        current_user (CurrentActiveUserDep): Dependency to fetch the currently authenticated user.
-        org_id (str): ID of the organization.
-
-    Returns:
-        Any: Result of the permission update operation (to be implemented).
-    """
-    log.info("%s %s", current_user.id, org_id)
+    organization_id = UUID(org_id)
+    await verify_current_user_role(user_id=current_user.id, org_id=organization_id,
+                                   permission_names=["organization:manage_custom_roles"])
+    return await get_all_permissions(organization_id=organization_id)
