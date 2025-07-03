@@ -17,6 +17,24 @@ class RoleShort(BaseModel):
     name: str
 
 
+class Role(BaseModel):
+    """
+    Represents schema for role.
+
+    Attributes:
+        id (UUID): The ID of the Role.
+        name (str): The name of the role.
+        description (str): Description fot the role.
+        organization_id (UUID): The ID of the organization.
+        is_system_role (bool): True if system role, else False
+    """
+    id: UUID
+    name: str
+    description: str
+    is_system_role: bool
+    organization_id: UUID
+
+
 class Permission(BaseModel):
     """
     Permission schema for validation.
@@ -80,3 +98,12 @@ class RoleResponse(BaseModel):
     organization_id: UUID
     is_system_role: bool
     permissions: list[Permission]
+
+class AllRoleResponse(BaseModel):
+    """
+    Response schema for roles in an organization.
+
+    Attributes:
+        items (list[RoleResponse]): The list of roles in the organization.
+    """
+    items: list[RoleResponse]

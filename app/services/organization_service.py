@@ -11,12 +11,14 @@ from db.crud.crud_organization import get_organization_by_name, update_organizat
 from db.crud.crud_permission import get_permission_by_name, get_permission_by_id, create_permissions
 from db.crud.crud_user import get_user_by_username, get_user_by_id
 from db.crud.curd_role import get_role_permission, get_role_by_id, create_role, \
-    update_role_permission, get_role_by_role_name_org_id
+    update_role_permission, get_role_by_role_name_org_id, get_all_organization_roles, \
+    get_permission_ids_for_role
 from exceptions import http_exceptions
 from schemas.organization import CreateOrganization, Organization, OrganizationResponse, \
     AddOrganizationMembersRequest, OrganizationMemberResponse, OrganizationByIDResponse, \
     UpdateOrganization, OrganizationMembersResponse, OrganizationMemberData
-from schemas.role import RoleShort, RoleResponse, CreateCustomRole, CreateRole, Permission
+from schemas.role import RoleShort, RoleResponse, CreateCustomRole, CreateRole, Permission, \
+    AllRoleResponse, Role
 from schemas.user import UserProfileShort, User
 
 
@@ -432,6 +434,40 @@ async def delete_member_from_organization(user_id: UUID, organization_id: UUID) 
         raise http_exceptions.ORGANIZATION_MEMBER_NOT_FOUND_EXCEPTION
 
 
+async def get_role_response(role: Role, permission_ids: list[UUID]) -> dict:
+    """
+    Generate the Role Response for given role and permission ids.
+
+    Args:
+        role (Role): The Role object for creating response.
+        permission_ids (list[UUID]): Permission ids to create response.
+
+    Raises:
+        HTTPException: If a permission ID is not present in the organization.
+
+    Returns:
+        dict: The Role response.
+    """
+    permissions = []
+    for permission_id in permission_ids:
+        permission = get_permission_by_id(permission_id=permission_id)
+        if not permission:
+            raise http_exceptions.PERMISSION_NOT_FOUND_EXCEPTION
+        permission_data = {
+            "id": permission.id,
+            "name": permission.name,
+            "description": permission.description,
+        }
+        permissions.append(Permission.model_validate(permission_data))
+    response_role = {
+      "id": role.id,
+      "name": role.name,
+      "description": role.description,
+      "organization_id": role.organization_id,
+      "is_system_role": role.is_system_role,
+      "permissions": permissions
+    }
+    return response_role
 
 
 async def create_new_role(organization_id: UUID, new_role: CreateCustomRole
@@ -449,7 +485,6 @@ async def create_new_role(organization_id: UUID, new_role: CreateCustomRole
     Returns:
         RoleResponse: The response after organization creation.
     """
-    # create role
     existing_role = get_role_by_role_name_org_id(role_name=new_role.name, org_id=organization_id)
     if existing_role and existing_role.organization_id == organization_id:
         raise http_exceptions.ROLE_ALREADY_EXITS_EXCEPTION
@@ -457,24 +492,30 @@ async def create_new_role(organization_id: UUID, new_role: CreateCustomRole
                            organization_id=organization_id)
     role_dict = role_data.model_dump(exclude_unset=True)
     created_role = create_role(role=role_dict)
+    role = Role.model_validate(created_role)
     await map_role_permissions(role_id=created_role.id, permissions=new_role.permission_ids)
-    permissions = []
-    for permission_id in new_role.permission_ids:
-        permission = get_permission_by_id(permission_id=permission_id)
-        if not permission:
-            raise http_exceptions.PERMISSION_NOT_FOUND_EXCEPTION
-        permission_data = {
-            "id": permission.id,
-            "name": permission.name,
-            "description": permission.description,
-        }
-        permissions.append(Permission.model_validate(permission_data))
-    response_role = {
-      "id": created_role.id,
-      "name": created_role.name,
-      "description": created_role.description,
-      "organization_id": created_role.organization_id,
-      "is_system_role": created_role.is_system_role,
-      "permissions": permissions
-    }
+    response_role = await get_role_response(role=role, permission_ids=new_role.permission_ids)
     return RoleResponse.model_validate(response_role)
+
+
+async def get_organization_roles(organization_id: UUID) -> AllRoleResponse:
+    """
+    Retrieve the Roles for the given organization ID
+
+    Args:
+        organization_id (UUID): The ID of the organization.
+
+    Raises:
+        HTTPException: If Permission not found in organization.
+
+    Returns:
+         AllRoleResponse: the list of RoleResponse.
+    """
+    roles = get_all_organization_roles(organization_id=organization_id)
+    response_roles = []
+    for role in roles:
+        permission_ids = get_permission_ids_for_role(role_id=role.id)
+        response_role = await get_role_response(role=role, permission_ids=permission_ids)
+        response_roles.append(response_role)
+    response = {"items": response_roles}
+    return AllRoleResponse.model_validate(response)

@@ -9,12 +9,12 @@ from core.logging_conf import Logging
 from schemas.organization import CreateOrganization, OrganizationResponse, Organization, \
     AddOrganizationMembersRequest, OrganizationMemberResponse, OrganizationByIDResponse, \
     UpdateOrganization, OrganizationMembersResponse, UpdateOrganizationMemberRole
-from schemas.role import RoleResponse, CreateCustomRole
+from schemas.role import RoleResponse, CreateCustomRole, AllRoleResponse
 from services.organization_service import crate_new_organization, get_organization_details, \
     add_new_members_to_organization, verify_current_user_role, get_organization_details_by_id, \
     update_organization_details, delete_organizations, get_organization_members_by_id, \
-    update_organization_member_role_by_id, delete_member_from_organization, create_new_role
-
+    update_organization_member_role_by_id, delete_member_from_organization, create_new_role, \
+    get_organization_roles
 
 # Initialize API router for organization-related endpoints
 router = APIRouter(prefix="/api/v1", tags=["organizations"])
@@ -217,8 +217,9 @@ async def remove_user_from_organization(current_user: CurrentActiveUserDep,
     await delete_member_from_organization(user_id=user_id, organization_id=org_id)
 
 
-@router.get("/organizations/{org_id}/roles")
-def get_x(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)]):
+@router.get("/organizations/{org_id}/roles", response_model=AllRoleResponse)
+async def get_all_roles_in_organization(current_user: CurrentActiveUserDep,
+                                  org_id: Annotated[str, Path(...)]):
     """
     List available roles within an organization.
 
@@ -230,6 +231,10 @@ def get_x(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)])
         Any: List of roles (to be implemented).
     """
     log.info("%s %s", current_user.id, org_id)
+    organization_id = UUID(org_id)
+    await verify_current_user_role(user_id=current_user.id, org_id=organization_id,
+                                   permission_names=["organization:read_details"])
+    return await get_organization_roles(organization_id=organization_id)
 
 
 @router.post("/organizations/{org_id}/roles", response_model=RoleResponse)
