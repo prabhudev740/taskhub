@@ -89,3 +89,15 @@ ROLE_ALREADY_EXITS_EXCEPTION = HTTPException(
     status_code=status.HTTP_409_CONFLICT,
     detail="Role already exists."
 )
+
+
+# Team Related Exception
+TEAM_NOT_FOUND_EXCEPTION = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail="Team not found"
+)
+
+TEAM_ALREADY_EXISTS_EXCEPTION = HTTPException(
+    status_code=status.HTTP_409_CONFLICT,
+    detail="Team already exists."
+)

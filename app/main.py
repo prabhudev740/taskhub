@@ -3,7 +3,7 @@ import asyncio
 import uvicorn
 from fastapi import FastAPI
 from core.logging_conf import Logging
-from apis.v1 import auth, users, organizations
+from apis.v1 import auth, users, organizations, teams
 from db.base import create_db_and_tables
 from db.init_db import db_init
 
@@ -16,6 +16,7 @@ app = FastAPI()
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(organizations.router)
+app.include_router(teams.router)
 
 @app.get("/")
 async def root():
