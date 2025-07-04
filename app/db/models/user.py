@@ -49,6 +49,9 @@ class UserModel(Base):
 
     # Relationship to members
     memberships = relationship("OrganizationMemberModel", back_populates="users")
+    team_memberships = relationship("TeamMemberModel", back_populates="user",
+                                    cascade="all, delete-orphan")
+
 
     def __repr__(self):
         """

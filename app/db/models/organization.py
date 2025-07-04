@@ -18,9 +18,11 @@ class OrganizationModel(Base):
         name (str): Name of the organization (must be unique).
         description (str): Optional description of the organization.
         owner_id (UUID): ID of the user who owns the organization.
-        created_at (datetime): Timestamp when the organization was created.
-        updated_at (datetime): Timestamp when the organization was last updated.
+        created_at (DateTime): Timestamp when the organization was created.
+        updated_at (DateTime): Timestamp when the organization was last updated.
         members (relationship): Relationship to the organization members.
+        organization_teams (relationship): Relationship to the organization teams.
+        teams (relationship): Relationship to the teams.
     """
     __tablename__ = "organizations"
 
@@ -34,7 +36,10 @@ class OrganizationModel(Base):
 
     # Relationship to members
     members = relationship("OrganizationMemberModel", back_populates="organization")
-    # owner = relationship("User") # If you have owner_id
+    organization_teams = relationship("OrganizationTeamModel", back_populates="organization",
+                                      cascade="all, delete-orphan")
+    teams = relationship("TeamModel", secondary="organization_teams",
+                         back_populates="organizations", overlaps="organization_teams")
 
 
 class OrganizationMemberModel(Base):
@@ -45,7 +50,7 @@ class OrganizationMemberModel(Base):
         user_id (UUID): Unique identifier for the user (primary key).
         organization_id (UUID): Unique identifier for the organization (primary key).
         role_id (UUID): ID of the role assigned to the user in the organization.
-        joined_at (datetime): Timestamp when the user joined the organization.
+        joined_at (DateTime): Timestamp when the user joined the organization.
         users (relationship): Relationship to the user entity.
         organization (relationship): Relationship to the organization entity.
         role (relationship): Relationship to the role entity.
@@ -61,8 +66,32 @@ class OrganizationMemberModel(Base):
     role_id = Column(UUID(as_uuid=True),
                      ForeignKey("roles.id", ondelete="CASCADE"),
                      nullable=False)
-    joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)  # pylint: disable=not-callable
+    joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     users = relationship("UserModel", back_populates="memberships")
     organization = relationship("OrganizationModel", back_populates="members")
     role = relationship("RoleModel", back_populates="organization_members")
+
+
+class OrganizationTeamModel(Base):
+    """
+    Join table for organizations and teams (many-to-many).
+
+    Attributes:
+        id (UUID): The ID of organization model.
+        organization_id (UUID): The ID of the organization.
+        team_id (UUID): The ID of the team.
+        organization (relationship): Relationship to the organizations.
+        team (relationship): Relationship to the teams.
+    """
+    __tablename__ = "organization_teams"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id = Column(UUID(as_uuid=True),
+                             ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    team_id = Column(UUID(as_uuid=True),
+                     ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
+
+    organization = relationship("OrganizationModel",
+                                back_populates="organization_teams", overlaps="teams")
+    team = relationship("TeamModel", back_populates="organization_teams", overlaps="teams")

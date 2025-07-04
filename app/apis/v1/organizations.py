@@ -137,7 +137,7 @@ async def get_organization_members(current_user: CurrentActiveUserDep,
         sort_by (str): Field to sort the organizations by.
 
     Returns:
-        Any: List of organization members (to be implemented).
+        OrganizationMembersResponse: List of organization members (to be implemented).
     """
     log.info("%s %s", current_user.id, org_id)
     organization_id =UUID(org_id)
@@ -184,7 +184,7 @@ async def update_members_role(current_user: CurrentActiveUserDep,
         update_role (UpdateOrganizationMemberRole): Contains the role_id to be updated.
 
     Returns:
-        Any: Result of the role update operation (to be implemented).
+        OrganizationMemberResponse: Result of the role update operation (to be implemented).
     """
     log.info("%s %s %s", current_user.id, org_id, user_id)
     org_id, user_id = UUID(org_id), UUID(user_id)
@@ -228,7 +228,7 @@ async def get_all_roles_in_organization(current_user: CurrentActiveUserDep,
         org_id (str): ID of the organization.
 
     Returns:
-        Any: List of roles (to be implemented).
+        AllRoleResponse: List of roles (to be implemented).
     """
     log.info("%s %s", current_user.id, org_id)
     organization_id = UUID(org_id)
@@ -249,7 +249,7 @@ async def create_custom_roles(current_user: CurrentActiveUserDep, org_id: Annota
         new_role (CreateCustomRole): Role to be created.
 
     Returns:
-        Any: Result of the role creation operation (to be implemented).
+        RoleResponse: Result of the role creation operation (to be implemented).
     """
     log.info("%s %s", current_user.id, org_id)
     organization_id = UUID(org_id)
@@ -269,7 +269,7 @@ async def get_organization_permissions(current_user: CurrentActiveUserDep,
         org_id (str): ID of the organization.
 
     Returns:
-        Any: List of permissions (to be implemented).
+        PermissionsResponse: List of permissions (to be implemented).
     """
     log.info("%s %s", current_user.id, org_id)
     organization_id = UUID(org_id)
