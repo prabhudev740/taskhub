@@ -1,18 +1,18 @@
 """ Teams API """
 
 from typing import Annotated
-from uuid import UUID
-from fastapi import APIRouter, Path
-from core.dependencies import CurrentActiveUserDep
+from fastapi import APIRouter, Query
+from core.dependencies import CurrentActiveUserDep, OrganizationIDDep
 from core.logging_conf import Logging
-from schemas.team import CreateTeam, SingleTeamResponse
+from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse
 from services.organization_service import verify_current_user_role
-from services.team_service import add_new_team_in_organization
+from services.team_service import add_new_team_in_organization, \
+    retrieve_all_team_of_the_organization
 
 
 log = Logging(__name__).log()
 router = APIRouter(
-    prefix="/api/v1/organization/{org_id}",
+    prefix="/api/v1/organization/{organization_id}",
     tags=["teams"],
     dependencies=[],
     responses={404: {"message": "Page Not Found!"}}
@@ -20,30 +20,49 @@ router = APIRouter(
 
 
 @router.post("/teams", response_model=SingleTeamResponse)
-async def create_new_team(current_user: CurrentActiveUserDep, org_id: Annotated[str, Path(...)],
+async def create_new_team(current_user: CurrentActiveUserDep, organization_id: OrganizationIDDep,
                           new_team: CreateTeam):
     """
     Creates a new team within the specified organization.
 
     Args:
         current_user (CurrentActiveUserDep): The current active user.
-        org_id (str): The Organization ID for Path.
+        organization_id (str): The Organization ID for Path.
         new_team: The new team to be created.
 
+    Returns:
+        SingleTeamResponse: The response after creating a team.
     """
     log.info("%s", current_user)
-    organization_id = UUID(org_id)
     await verify_current_user_role(user_id=current_user.id, org_id=organization_id,
                                    permission_names=['team:create'])
-    return await add_new_team_in_organization(org_id=organization_id, team=new_team)
+    return await add_new_team_in_organization(org_id=organization_id, user_id=current_user.id,
+                                              role_name="Team Owner", team=new_team, is_owner=True)
 
 
-@router.get("teams")
-def get_all_teams(current_user: CurrentActiveUserDep):
+@router.get("/teams", response_model=AllTeamResponse)
+async def get_all_teams(current_user: CurrentActiveUserDep, organization_id: OrganizationIDDep,
+                        page: Annotated[int, Query(ge=1)] = 1,
+                        size: Annotated[int, Query(ge=10)] = 10,
+                        sort_by: Annotated[str, Query()] = "name"):
     """
     Retrieves a list of teams within the specified organization.
+
+    Args:
+        current_user (CurrentActiveUserDep): The current active user.
+        organization_id (str): ID of the organization.
+        page (int): Page number for pagination (minimum value: 1).
+        size (int): Number of items per page (minimum value: 10).
+        sort_by (str): Field to sort the organizations by.
+
+    Returns:
+        AllTeamResponse: List of all the teams.
     """
     log.info("%s", current_user)
+    await verify_current_user_role(org_id=organization_id, user_id=current_user.id,
+                                   permission_names=['team:read'])
+    return await retrieve_all_team_of_the_organization(organization_id=organization_id, page=page,
+                                                       size=size, sort_by=sort_by)
 
 
 @router.get("/teams/{team_id}")

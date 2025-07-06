@@ -1,6 +1,6 @@
 """ Role Model """
 import uuid
-from sqlalchemy import Column, UUID, String, ForeignKey, Boolean
+from sqlalchemy import Column, UUID, String, ForeignKey, Boolean, CheckConstraint, Index
 from sqlalchemy.orm import relationship
 from db.base import Base
 
@@ -43,7 +43,19 @@ class RoleModel(Base):
     description = Column(String, nullable=True)
     is_system_role = Column(Boolean, default=False, nullable=False)
     organization_id = Column(UUID, ForeignKey("organizations.id"), nullable=True)
+    team_id = Column(UUID, ForeignKey("teams.id"), nullable=True)
 
     organization_members = relationship("OrganizationMemberModel", back_populates="role")
+    team_members = relationship("TeamMemberModel", back_populates="role")
     permissions = relationship("PermissionModel",
                                secondary="role_permission", back_populates="roles")
+
+    __table_args__ = (
+        CheckConstraint(
+            "(organization_id IS NOT NULL AND team_id IS NULL) OR "
+            "(organization_id IS NULL AND team_id IS NOT NULL)",
+            name="only_one_scope"
+        ),
+        Index("ix_roles_organization_id", "organization_id"),
+        Index("ix_roles_team_id", "team_id"),
+    )

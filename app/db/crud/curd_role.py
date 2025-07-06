@@ -1,4 +1,5 @@
 """ CRUD User """
+
 from uuid import UUID
 from core.logging_conf import Logging
 from db.base import get_session
@@ -41,6 +42,7 @@ def get_role_by_name(role_name: str) -> list[type[RoleModel]] | None:
         return None
     return roles
 
+
 def get_role_by_role_name_org_id(role_name: str, org_id: UUID) -> type[RoleModel] | None:
     """
     Retrieve a role by its name.
@@ -53,6 +55,23 @@ def get_role_by_role_name_org_id(role_name: str, org_id: UUID) -> type[RoleModel
     """
     session = get_session()
     role = session.query(RoleModel).filter_by(name=role_name, organization_id=org_id).first()
+    if not role:
+        return None
+    return role
+
+def get_role_by_role_name_team_id(role_name: str, team_id: UUID) -> type[RoleModel] | None:
+    """
+    Retrieve the role by role id.
+
+    Args:
+        role_name (str): The role name to get the id.
+        team_id (UUID): The ID of the team.
+
+    Returns:
+        type[RoleModel] | None: The role for the specific ID.
+    """
+    session = get_session()
+    role = session.query(RoleModel).filter_by(name=role_name, team_id=team_id).first()
     if not role:
         return None
     return role

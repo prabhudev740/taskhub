@@ -2,7 +2,7 @@
 
 from uuid import UUID
 from db.base import get_session
-from db.models.organization import OrganizationModel, OrganizationMemberModel
+from db.models.organization import OrganizationModel, OrganizationMemberModel, OrganizationTeamModel
 
 
 def get_organizations_by_member_id(user_id: UUID, page: int, size: int,
@@ -246,3 +246,21 @@ def delete_organization_member_by_id(user_id: UUID, organization_id: UUID) -> bo
     session.delete(organization_member)
     session.commit()
     return True
+
+
+def create_organization_team(organization_team: dict[str, UUID]) -> OrganizationTeamModel:
+    """
+    Create Organization team.
+
+    Args:
+        organization_team (dict[str, UUID]): The data to create a new organization team.
+
+    Returns:
+        OrganizationTeamModel: The OrganizationTeamModel after creating an org team.
+    """
+    organization_team = OrganizationTeamModel(**organization_team)
+    session = get_session()
+    session.add(organization_team)
+    session.commit()
+    session.refresh(organization_team)
+    return organization_team

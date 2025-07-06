@@ -58,11 +58,13 @@ class CreateRole(BaseModel):
         description (str | None): Optional description of the role.
         is_system_role (bool): Indicates if the role is a system role. Defaults to False.
         organization_id (UUID | None): Optional ID of the organization associated with the role.
+        team_id (UUID | None): Optional ID of the team associated with the role.
     """
     name: Annotated[str, Field(min_length=3)]
     description: Annotated[str | None, Field()] = None
     is_system_role: Annotated[bool, Field()] = False
     organization_id: Annotated[UUID | None, Field()] = None
+    team_id: Annotated[UUID | None, Field()] = None
 
 
 class CreateCustomRole(BaseModel):
