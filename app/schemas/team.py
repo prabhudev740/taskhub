@@ -57,3 +57,21 @@ class SingleTeamResponse(BaseModel):
     member_count: int
 
     model_config = {"from_attributes": True}
+
+
+class AllTeamResponse(BaseModel):
+    """
+    The response model for all teams.
+
+    Args:
+        items (list[SingleTeamResponse]): The list of all the team members.
+        total (int): Total number of teams.
+        page (int): Page number for pagination (minimum value: 1).
+        size (int): Number of items per page (minimum value: 10).
+        pages (int): Total number of pages.
+    """
+    items: list[SingleTeamResponse]
+    total: int
+    page: int
+    size: int
+    pages: int

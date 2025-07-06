@@ -141,3 +141,60 @@ ORGANIZATION_ROLES = {
         ]
     }
 }
+
+
+TEAM_ROLES = {
+    "owner": {
+        "name": "Team Owner",
+        "description": "The creator or main administrator of the team. Has full "
+                       "control over the team.",
+        "permissions": [
+            perm['name'] for perm in TEAM_PERMISSIONS + PROJECT_PERMISSIONS + TASK_PERMISSIONS
+        ]
+    },
+    "lead": {
+        "name": "Team Lead",
+        "description": "Manages the team and its projects. Can update team info and"
+                       "manage members.",
+        "permissions": [
+            'team:read',
+            'team:update',
+            'team:manage_members',
+            'project:create',
+            'project:read',
+            'project:update',
+            'project:manage_members',
+            'task:create',
+            'task:read',
+            'task:update',
+            'task:assign_user',
+            'task:change_status',
+            'task:comment',
+            'task:manage_attachments'
+        ]
+    },
+    "member": {
+        "name": "Team Member",
+        "description": "A regular member who can participate in projects and tasks.",
+        "permissions": [
+            'team:read',
+            'project:read',
+            'task:create',
+            'task:read',
+            'task:update',
+            'task:assign_user',
+            'task:change_status',
+            'task:comment',
+            'task:manage_attachments'
+        ]
+    },
+    "viewer": {
+        "name": "Team Viewer",
+        "description": "Read-only access to team, projects, and tasks.",
+        "permissions": [
+            'team:read',
+            'project:read',
+            'task:read'
+        ]
+    }
+}

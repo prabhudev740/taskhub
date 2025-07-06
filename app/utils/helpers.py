@@ -1,3 +1,5 @@
+""" The Helpers file."""
+
 # from google.cloud import secretmanager
 #
 #
@@ -41,3 +43,17 @@
 #
 #     # Print metadata about the secret.
 #     print(f"Got secret {response.name} with replication policy {replication}")
+from uuid import UUID
+
+
+def get_organization_id(organization_id: str) -> UUID:
+    """
+    Coverts the str organization id to UUID.
+
+    Args:
+        organization_id (str): The organization_id in String type.
+
+    Returns:
+        UUID: organization_id in UUID.
+    """
+    return UUID(organization_id)

@@ -17,6 +17,8 @@ class TeamModel(Base):
         id (UUID): The ID of the team.
         name (str): The name of the team.
         description (str): The description of team.
+        organization_id (UUID): The ID of the organization.
+        owner_id (UUID): The ID of the user who created the team.
         created_at (DateTime): Timestamp when the team was created.
         updated_at (DateTime): Timestamp when the organization was created.
         members (relationship): Relationship to the team members.
@@ -33,6 +35,9 @@ class TeamModel(Base):
     description = Column(String, nullable=True)
     organization_id = Column(UUID(as_uuid=True),
                              ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    owner_id = Column(UUID(as_uuid=True),
+                      ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(),
                         server_onupdate=func.now())
@@ -44,6 +49,16 @@ class TeamModel(Base):
     organizations = relationship("OrganizationModel", secondary="organization_teams",
                                  back_populates="teams",
                                  overlaps="organization_teams,team,organization")
+    owner = relationship("UserModel", back_populates="owned_teams")
+
+    def __repr__(self):
+        """
+        Returns the string representation of the TeamModel class.
+
+        Returns:
+            str: The table name associated with the TeamModel class.
+        """
+        return TeamModel.__tablename__
 
 
 class TeamMemberModel(Base):
@@ -63,7 +78,10 @@ class TeamMemberModel(Base):
                      ForeignKey("teams.id", ondelete="CASCADE"), primary_key=True)
     user_id = Column(UUID(as_uuid=True),
                      ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    role_id = Column(UUID(as_uuid=True),
+                     ForeignKey("roles.id", ondelete="CASCADE"))
     joined_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     team = relationship("TeamModel", back_populates="members")
     user = relationship("UserModel", back_populates="team_memberships")
+    role = relationship("RoleModel", back_populates="team_members")
