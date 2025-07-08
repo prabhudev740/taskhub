@@ -2,13 +2,12 @@
 
 from typing import Annotated
 from fastapi import APIRouter, Query
-from core.dependencies import CurrentActiveUserDep, OrganizationIDDep
+from core.dependencies import CurrentActiveUserDep, OrganizationIDDep, TeamIDDep
 from core.logging_conf import Logging
 from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse
 from services.organization_service import verify_current_user_role
 from services.team_service import add_new_team_in_organization, \
-    retrieve_all_team_of_the_organization
-
+    retrieve_all_team_of_the_organization, get_team_by_team_id
 
 log = Logging(__name__).log()
 router = APIRouter(
@@ -33,9 +32,11 @@ async def create_new_team(current_user: CurrentActiveUserDep, organization_id: O
     Returns:
         SingleTeamResponse: The response after creating a team.
     """
-    log.info("%s", current_user)
+    log.info("Verifying current user permission to create a team.")
     await verify_current_user_role(user_id=current_user.id, org_id=organization_id,
                                    permission_names=['team:create'])
+
+    log.info("Creating a new team in the organization: %s", organization_id)
     return await add_new_team_in_organization(org_id=organization_id, user_id=current_user.id,
                                               role_name="Team Owner", team=new_team, is_owner=True)
 
@@ -58,19 +59,36 @@ async def get_all_teams(current_user: CurrentActiveUserDep, organization_id: Org
     Returns:
         AllTeamResponse: List of all the teams.
     """
-    log.info("%s", current_user)
+    log.info("Verifying current user permission to read team.")
     await verify_current_user_role(org_id=organization_id, user_id=current_user.id,
                                    permission_names=['team:read'])
+
+    log.info("Getting all teams in the organization: %s", organization_id)
     return await retrieve_all_team_of_the_organization(organization_id=organization_id, page=page,
                                                        size=size, sort_by=sort_by)
 
 
-@router.get("/teams/{team_id}")
-def get_specific_team(current_user: CurrentActiveUserDep):
+@router.get("/teams/{team_id}", response_model=SingleTeamResponse)
+async def get_specific_team(current_user: CurrentActiveUserDep, organization_id: OrganizationIDDep,
+                            team_id: TeamIDDep):
     """
     Retrieves detailed information about a specific team.
+
+    Args:
+        current_user (CurrentActiveUserDep): The current active user.
+        organization_id (UUID): ID of the organization.
+        team_id (UUID): The ID of the team.
+
+    Returns:
+        SingleTeamResponse: The response after creating a team.
     """
-    log.info("%s", current_user)
+    log.info("Verifying current user permission to read team.")
+    await verify_current_user_role(org_id=organization_id, user_id=current_user.id,
+                                   permission_names=['team:read'])
+
+    log.info("Creating team details in the organization: %s for team: %s",
+             organization_id, team_id)
+    return await get_team_by_team_id(team_id=team_id)
 
 
 @router.put("/teams/{team_id}")

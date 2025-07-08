@@ -1,4 +1,11 @@
 """ The Helpers file."""
+from typing import Annotated
+from uuid import UUID
+from fastapi import Path
+from core.logging_conf import Logging
+
+
+log = Logging(__name__).log()
 
 # from google.cloud import secretmanager
 #
@@ -43,10 +50,9 @@
 #
 #     # Print metadata about the secret.
 #     print(f"Got secret {response.name} with replication policy {replication}")
-from uuid import UUID
 
 
-def get_organization_id(organization_id: str) -> UUID:
+def get_organization_id(organization_id: Annotated[str, Path(...)]) -> UUID:
     """
     Coverts the str organization id to UUID.
 
@@ -57,3 +63,16 @@ def get_organization_id(organization_id: str) -> UUID:
         UUID: organization_id in UUID.
     """
     return UUID(organization_id)
+
+
+def get_team_id(team_id: Annotated[str, Path(...)]) -> UUID:
+    """
+    Coverts the str organization id to UUID.
+
+    Args:
+        team_id (str): The team_id in String type.
+
+    Returns:
+        UUID: team_id in UUID.
+    """
+    return UUID(team_id)
