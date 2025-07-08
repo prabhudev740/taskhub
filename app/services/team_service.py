@@ -6,7 +6,7 @@ from core.logging_conf import Logging
 from core.permission_config import TEAM_ROLES
 from db.crud.crud_organization import create_organization_team
 from db.crud.crud_team import get_team_by_name, create_team, get_member_count_by_team_id, \
-    get_organization_teams, create_team_member
+    get_organization_teams, create_team_member, get_team_by_id
 from db.crud.curd_role import get_role_by_role_name_team_id, create_role
 from db.models import TeamModel
 from exceptions import http_exceptions
@@ -63,13 +63,13 @@ async def add_new_team_member(current_user_id: UUID, team_id: UUID, role_name: s
     return create_team_member(team_member)
 
 
-async def get_single_team_response(team: TeamModel) -> SingleTeamResponse:
+async def get_single_team_response(team: TeamModel | None) -> SingleTeamResponse:
     """
     Generate the single team response from the TeamModel object with member count.
     TODO: We can further add assigned projects in Response
 
     Args:
-        team (TeamModel): SQLAlchemy model retrieved from db.
+        team (dict): SQLAlchemy model retrieved from db.
 
     Returns:
         SingleTeamResponse: The response of created team.
@@ -128,6 +128,8 @@ async def add_new_team_in_organization(org_id: UUID, user_id: UUID, role_name: s
     log.info("Updating the team member relation.")
     await add_new_team_member(current_user_id=user_id, team_id=created_team.id,
                               role_name=role_name)
+    created_team = created_team.__dict__.copy()
+    log.info(created_team)
     return await get_single_team_response(team=created_team)
 
 
@@ -149,6 +151,7 @@ async def retrieve_all_team_of_the_organization(organization_id: UUID,  page: in
     sorted_teams, total, pages = get_organization_teams(organization_id=organization_id, page=page,
                                       size=size, sort_by=sort_by)
 
+    log.info("Updating the team response.")
     response_team = \
         {"items": sorted_teams, "total": total, "page": page, "size": size, "pages": pages}
     teams_with_count = []
@@ -156,6 +159,24 @@ async def retrieve_all_team_of_the_organization(organization_id: UUID,  page: in
         team_dict = team.__dict__.copy()
         team_dict["member_count"] = get_member_count_by_team_id(team.id)
         teams_with_count.append(team_dict)
+        # teams_with_count.append(await get_single_team_response(team=team))
 
     response_team.update({"items": teams_with_count})
     return AllTeamResponse.model_validate(response_team)
+
+
+async def get_team_by_team_id(team_id: UUID) -> SingleTeamResponse:
+    """
+    Retrieve the team by team ID.
+
+    Args:
+        team_id (UUID): The ID of the team.
+
+    Returns:
+        SingleTeamResponse: The response for a specific ID.
+    """
+    log.info("Getting the team by team ID: %s", team_id)
+    retrieved_team = get_team_by_id(team_id=team_id)
+    if not retrieved_team:
+        raise http_exceptions.TEAM_NOT_FOUND_EXCEPTION
+    return await get_single_team_response(team=retrieved_team)

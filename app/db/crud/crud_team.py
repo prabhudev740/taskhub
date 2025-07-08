@@ -40,7 +40,7 @@ def create_team_member(team_member: dict[str, UUID]) -> TeamMemberModel:
     session.refresh(team_member)
     return team_member
 
-def get_team_by_id(team_id: UUID) -> type[TeamModel] | None:
+def get_team_by_id(team_id: UUID) -> TeamModel | None:
     """
     Retrieve the team by team ID from DB.
 
@@ -48,10 +48,10 @@ def get_team_by_id(team_id: UUID) -> type[TeamModel] | None:
         team_id (UUID): The ID of team to retrieve the team from db.
 
     Returns:
-        type[TeamModel] | None: type[TeamModel] if team found else None.
+        TeamModel | None: The TeamModel instance if found, else None.
     """
     session = get_session()
-    team = session.query(TeamModel).filter_by(id=team_id).first()
+    team = session.query(TeamModel).get(team_id)
     if not team:
         return None
     return team
