@@ -23,6 +23,7 @@ def create_team(team_data: dict[str, UUID]) -> TeamModel:
     session.refresh(team)
     return team
 
+
 def create_team_member(team_member: dict[str, UUID]) -> TeamMemberModel:
     """
     Create a new team in the database.
@@ -39,6 +40,7 @@ def create_team_member(team_member: dict[str, UUID]) -> TeamMemberModel:
     session.commit()
     session.refresh(team_member)
     return team_member
+
 
 def get_team_by_id(team_id: UUID) -> TeamModel | None:
     """
@@ -114,3 +116,25 @@ def get_organization_teams(organization_id: UUID, page: int, size: int,
     sorted_teams = sorted_teams.offset((page - 1) * size).limit(size).all()
     pages = (total + size - 1) // size
     return sorted_teams, total, pages
+
+
+def update_team(team_id: UUID, team_data: dict) -> TeamModel | None:
+    """
+    Update the team in database.
+
+    Args:
+        team_id (UUID): The ID of the team to be updated.
+        team_data (UpdateTeam): The new details of the team.
+
+    Returns:
+        TeamModel | None: TeamModel if updated successful, else None.
+    """
+    session = get_session()
+    team = session.query(TeamModel).get(team_id)
+    if not team:
+        return None
+    for key, val in team_data.items():
+        setattr(team, key, val)
+    session.commit()
+    session.refresh(team)
+    return team

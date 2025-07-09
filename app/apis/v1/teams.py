@@ -4,10 +4,10 @@ from typing import Annotated
 from fastapi import APIRouter, Query
 from core.dependencies import CurrentActiveUserDep, OrganizationIDDep, TeamIDDep
 from core.logging_conf import Logging
-from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse
+from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse, UpdateTeam
 from services.organization_service import verify_current_user_role
 from services.team_service import add_new_team_in_organization, \
-    retrieve_all_team_of_the_organization, get_team_by_team_id
+    retrieve_all_team_of_the_organization, get_team_by_team_id, update_team_details
 
 log = Logging(__name__).log()
 router = APIRouter(
@@ -63,7 +63,7 @@ async def get_all_teams(current_user: CurrentActiveUserDep, organization_id: Org
     await verify_current_user_role(org_id=organization_id, user_id=current_user.id,
                                    permission_names=['team:read'])
 
-    log.info("Getting all teams in the organization: %s", organization_id)
+    log.info("Retrieving all teams in the organization: %s", organization_id)
     return await retrieve_all_team_of_the_organization(organization_id=organization_id, page=page,
                                                        size=size, sort_by=sort_by)
 
@@ -86,17 +86,25 @@ async def get_specific_team(current_user: CurrentActiveUserDep, organization_id:
     await verify_current_user_role(org_id=organization_id, user_id=current_user.id,
                                    permission_names=['team:read'])
 
-    log.info("Creating team details in the organization: %s for team: %s",
+    log.info("Retrieving team details in the organization: %s for team: %s",
              organization_id, team_id)
     return await get_team_by_team_id(team_id=team_id)
 
 
-@router.put("/teams/{team_id}")
-def update_specific_team(current_user: CurrentActiveUserDep):
+@router.put("/teams/{team_id}", response_model=SingleTeamResponse)
+async def update_specific_team(current_user: CurrentActiveUserDep,
+                               organization_id: OrganizationIDDep, team_id: TeamIDDep,
+                               team: UpdateTeam):
     """
     Updates a team's details. Requires appropriate permissions (e.g., org admin, team lead).
     """
-    log.info("%s", current_user)
+    log.info("Verifying current user permission to update team.")
+    await verify_current_user_role(user_id=current_user.id, org_id=organization_id,
+                                   permission_names=['team:update'])
+
+    log.info("Updating team details in the organization: %s for team: %s",
+             organization_id, team_id)
+    return await update_team_details(team_id=team_id, team_data=team)
 
 
 @router.delete("/teams/{team_id}")

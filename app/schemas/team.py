@@ -34,6 +34,18 @@ class CreateTeam(BaseModel):
     description: Annotated[str | None, Field(default=None)]
 
 
+class UpdateTeam(BaseModel):
+    """
+     Request schema for update team.
+
+    Attributes:
+        name (str): The name of the Team.
+        description (str): The description of the team.
+    """
+    name: Annotated[str, Field(min_length=3, max_length=64, default=None)]
+    description: Annotated[str | None, Field(default=None)]
+
+
 # Response Schema
 class SingleTeamResponse(BaseModel):
     """
