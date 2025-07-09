@@ -6,12 +6,12 @@ from core.logging_conf import Logging
 from core.permission_config import TEAM_ROLES
 from db.crud.crud_organization import create_organization_team
 from db.crud.crud_team import get_team_by_name, create_team, get_member_count_by_team_id, \
-    get_organization_teams, create_team_member, get_team_by_id
+    get_organization_teams, create_team_member, get_team_by_id, update_team
 from db.crud.curd_role import get_role_by_role_name_team_id, create_role
 from db.models import TeamModel
 from exceptions import http_exceptions
 from schemas.role import CreateRole
-from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse
+from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse, UpdateTeam
 from services.organization_service import map_role_permissions
 
 
@@ -34,7 +34,6 @@ async def create_default_team_role_permissions(team_id: UUID):
             created_role = create_role(role)
             role_id = created_role.id
             await map_role_permissions(role_id, role_data['permissions'])
-
 
 
 async def add_new_team_member(current_user_id: UUID, team_id: UUID, role_name: str):
@@ -172,6 +171,9 @@ async def get_team_by_team_id(team_id: UUID) -> SingleTeamResponse:
     Args:
         team_id (UUID): The ID of the team.
 
+    Raises:
+        HTTPException: If team not found.
+
     Returns:
         SingleTeamResponse: The response for a specific ID.
     """
@@ -180,3 +182,29 @@ async def get_team_by_team_id(team_id: UUID) -> SingleTeamResponse:
     if not retrieved_team:
         raise http_exceptions.TEAM_NOT_FOUND_EXCEPTION
     return await get_single_team_response(team=retrieved_team)
+
+
+async def update_team_details(team_id: UUID, team_data: UpdateTeam) -> SingleTeamResponse:
+    """
+    Update the specific team details.
+
+    Args:
+        team_id (UUID): The ID of the team to be updated.
+        team_data (UpdateTeam): The new details of the team.
+
+    Raises:
+        HTTPException: If team not found.
+
+    Returns:
+        SingleTeamResponse: The response for a specific ID.
+    """
+    log.info("Validate and converting the team_data")
+    team_data = team_data.model_dump(exclude_unset=True)
+
+    log.info("Updating team details for team: %s", team_id)
+    updated_team = update_team(team_id=team_id, team_data=team_data)
+    if not updated_team:
+        raise http_exceptions.TEAM_NOT_FOUND_EXCEPTION
+
+    log.debug("Updated data: %s", updated_team)
+    return await get_single_team_response(team=updated_team)
