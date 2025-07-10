@@ -1,13 +1,14 @@
 """ Teams API """
 
 from typing import Annotated
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, status
 from core.dependencies import CurrentActiveUserDep, OrganizationIDDep, TeamIDDep
 from core.logging_conf import Logging
 from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse, UpdateTeam
 from services.organization_service import verify_current_user_role
 from services.team_service import add_new_team_in_organization, \
-    retrieve_all_team_of_the_organization, get_team_by_team_id, update_team_details
+    retrieve_all_team_of_the_organization, get_team_by_team_id, update_team_details, \
+    delete_the_team_by_id
 
 log = Logging(__name__).log()
 router = APIRouter(
@@ -97,6 +98,15 @@ async def update_specific_team(current_user: CurrentActiveUserDep,
                                team: UpdateTeam):
     """
     Updates a team's details. Requires appropriate permissions (e.g., org admin, team lead).
+
+    Args:
+        current_user (CurrentActiveUserDep): The current active user.
+        organization_id (OrganizationIDDep): ID of the organization.
+        team_id (TeamIDDep): The ID of the team.
+        team (UpdateTeam): Team details to be updated.
+
+    Returns:
+        SingleTeamResponse: The response after creating a team.
     """
     log.info("Verifying current user permission to update team.")
     await verify_current_user_role(user_id=current_user.id, org_id=organization_id,
@@ -107,12 +117,24 @@ async def update_specific_team(current_user: CurrentActiveUserDep,
     return await update_team_details(team_id=team_id, team_data=team)
 
 
-@router.delete("/teams/{team_id}")
-def delete_specific_team(current_user: CurrentActiveUserDep):
+@router.delete("/teams/{team_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_specific_team(current_user: CurrentActiveUserDep,
+                         organization_id: OrganizationIDDep, team_id: TeamIDDep):
     """
     Deletes a team. Requires appropriate permissions.
+
+    Args:
+        current_user (CurrentActiveUserDep): The current active user.
+        organization_id (OrganizationIDDep): ID of the organization.
+        team_id (TeamIDDep): The ID of the team.
     """
-    log.info("%s", current_user)
+    log.info("Verifying current user permission to update team.")
+    await verify_current_user_role(user_id=current_user.id, org_id=organization_id,
+                                   permission_names=['team:delete'])
+
+    log.info("Deleting the team in the organization: %s for team: %s",
+             organization_id, team_id)
+    await delete_the_team_by_id(team_id=team_id)
 
 
 @router.post("/teams/{team_id}/members")
