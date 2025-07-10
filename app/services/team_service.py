@@ -6,7 +6,7 @@ from core.logging_conf import Logging
 from core.permission_config import TEAM_ROLES
 from db.crud.crud_organization import create_organization_team
 from db.crud.crud_team import get_team_by_name, create_team, get_member_count_by_team_id, \
-    get_organization_teams, create_team_member, get_team_by_id, update_team
+    get_organization_teams, create_team_member, get_team_by_id, update_team, delete_team
 from db.crud.curd_role import get_role_by_role_name_team_id, create_role
 from db.models import TeamModel
 from exceptions import http_exceptions
@@ -208,3 +208,19 @@ async def update_team_details(team_id: UUID, team_data: UpdateTeam) -> SingleTea
 
     log.debug("Updated data: %s", updated_team)
     return await get_single_team_response(team=updated_team)
+
+
+async def delete_the_team_by_id(team_id: UUID) -> None:
+    """
+    Delete a specific team.
+
+    Args:
+        team_id (UUID): The ID of the team to be updated.
+
+    Raises:
+        HTTPException: If team not found
+    """
+    log.info()
+    deleted = delete_team(team_id=team_id)
+    if not deleted:
+        raise http_exceptions.TEAM_NOT_FOUND_EXCEPTION

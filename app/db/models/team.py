@@ -45,7 +45,8 @@ class TeamModel(Base):
     members = relationship("TeamMemberModel", back_populates="team",
                            cascade="all, delete-orphan")
     organization_teams = relationship("OrganizationTeamModel", back_populates="team",
-                                      overlaps="teams")
+                                      overlaps="teams",  cascade="all, delete-orphan",
+                                      uselist=False)
     organizations = relationship("OrganizationModel", secondary="organization_teams",
                                  back_populates="teams",
                                  overlaps="organization_teams,team,organization")

@@ -138,3 +138,22 @@ def update_team(team_id: UUID, team_data: dict) -> TeamModel | None:
     session.commit()
     session.refresh(team)
     return team
+
+
+def delete_team(team_id: UUID) -> bool:
+    """
+    Delete a team from the database.
+
+    Args:
+        team_id (UUID): The ID of the team to delete.
+
+    Returns:
+        bool: True if deletion was successful, False otherwise.
+    """
+    session = get_session()
+    team = session.query(TeamModel).get(team_id)
+    if not team:
+        return False
+    session.delete(team)
+    session.commit()
+    return True
