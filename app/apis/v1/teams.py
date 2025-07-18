@@ -4,11 +4,12 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 from core.dependencies import CurrentActiveUserDep, OrganizationIDDep, TeamIDDep
 from core.logging_conf import Logging
-from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse, UpdateTeam
+from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse, UpdateTeam, \
+    AddTeamMembersRequest, AddMemberResponse
 from services.organization_service import verify_current_user_role
 from services.team_service import add_new_team_in_organization, \
     retrieve_all_team_of_the_organization, get_team_by_team_id, update_team_details, \
-    delete_the_team_by_id
+    delete_the_team_by_id, add_team_members, verify_current_team_role
 
 log = Logging(__name__).log()
 router = APIRouter(
@@ -137,13 +138,27 @@ async def delete_specific_team(current_user: CurrentActiveUserDep,
     await delete_the_team_by_id(team_id=team_id)
 
 
-@router.post("/teams/{team_id}/members")
-def add_a_member_to_team(current_user: CurrentActiveUserDep):
+@router.post("/teams/{team_id}/members", response_model=list[AddMemberResponse])
+async def add_a_member_to_team(current_user: CurrentActiveUserDep, team_id: TeamIDDep,
+                         organization_id: OrganizationIDDep, new_users: AddTeamMembersRequest):
     """
     Adds a user (who must already be a member of the parent organization) to the specified
     team with a given role.
+
+    Args:
+        current_user (CurrentActiveUserDep): The current active user.
+        organization_id (OrganizationIDDep): ID of the organization.
+        team_id (TeamIDDep): The ID of the team.
+        new_users (AddTeamMembersRequest): List of user_id, role_ids.
+
+    Returns:
+        SingleMemberResponse: The response for added team member.
     """
-    log.info("%s", current_user)
+
+    await verify_current_team_role(user_id=current_user.id, team_id=team_id,
+                                   permission_names=['team:manage_members'])
+    return await add_team_members(org_id=organization_id,
+                                  team_id=team_id, user_roles=new_users)
 
 
 @router.get("/teams/{team_id}/members")

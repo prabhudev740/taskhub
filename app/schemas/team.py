@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 from pydantic import BaseModel, Field
+from schemas.user import UserProfileShort
 
 
 # Internal Schema
@@ -46,6 +47,15 @@ class UpdateTeam(BaseModel):
     description: Annotated[str | None, Field(default=None)]
 
 
+class AddTeamMember(BaseModel):
+    user_id: Annotated[UUID, Field()]
+    role_name: Annotated[str | None, Field(min_length=2, default="Viewer")]
+
+
+class AddTeamMembersRequest(BaseModel):
+    users: list[AddTeamMember]
+
+
 # Response Schema
 class SingleTeamResponse(BaseModel):
     """
@@ -83,6 +93,23 @@ class AllTeamResponse(BaseModel):
         pages (int): Total number of pages.
     """
     items: list[SingleTeamResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+
+class AddMemberResponse(BaseModel):
+    team_id: UUID
+    organization_id: UUID
+    role_id: UUID
+    role_name: str
+    user_details: UserProfileShort
+    added_at: datetime
+
+
+class AllMembersResponse(BaseModel):
+    items: list[AddMemberResponse]
     total: int
     page: int
     size: int

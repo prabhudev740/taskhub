@@ -157,3 +157,21 @@ def delete_team(team_id: UUID) -> bool:
     session.delete(team)
     session.commit()
     return True
+
+def get_team_member_by_team_user_id(team_id: UUID, user_id: UUID) -> type[TeamMemberModel] | None:
+    # """
+    # Retrieve an organization member by organization ID and user ID.
+    #
+    # Args:
+    #     org_id (UUID): The ID of the organization.
+    #     user_id (UUID): The ID of the user.
+    #
+    # Returns:
+    #     OrganizationMemberModel | None: The organization member if found, otherwise None.
+    # """
+    session = get_session()
+    team_member = \
+        session.query(TeamMemberModel).filter_by(user_id=user_id, team_id=team_id).first()
+    if not team_member:
+        return None
+    return team_member
