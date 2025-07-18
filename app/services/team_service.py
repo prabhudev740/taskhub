@@ -6,16 +6,44 @@ from core.logging_conf import Logging
 from core.permission_config import TEAM_ROLES
 from db.crud.crud_organization import create_organization_team
 from db.crud.crud_team import get_team_by_name, create_team, get_member_count_by_team_id, \
-    get_organization_teams, create_team_member, get_team_by_id, update_team, delete_team
+    get_organization_teams, create_team_member, get_team_by_id, update_team, delete_team, \
+    get_team_member_by_team_user_id
+from db.crud.crud_user import get_user_by_id
 from db.crud.curd_role import get_role_by_role_name_team_id, create_role
-from db.models import TeamModel
+from db.models import TeamModel, TeamMemberModel
 from exceptions import http_exceptions
 from schemas.role import CreateRole
-from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse, UpdateTeam
-from services.organization_service import map_role_permissions
+from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse, UpdateTeam, \
+    AddMemberResponse, AddTeamMembersRequest
+from services.organization_service import map_role_permissions, get_verified_role_permissions
 
 
 log = Logging(__name__).log()
+
+
+async def verify_current_team_role(user_id: UUID, team_id: UUID, permission_names: list[str]):
+    """
+    Verify the current user's role and permissions in a team.
+
+    Args:
+        user_id (UUID): The ID of the user.
+        team_id (UUID): The ID of the team_.
+        permission_names (list[str]): The list of names of the permission to verify.
+
+    Returns:
+        Any: The role permission data.
+
+    Raises:
+        HTTPException: If the team_, permission, or role permission is not found.
+    """
+
+    log.info("team_id=%s, user_id=%s", team_id, user_id)
+    team_member = get_team_member_by_team_user_id(team_id=team_id, user_id=user_id)
+    if not team_member:
+        raise http_exceptions.ORGANIZATION_NOT_FOUND_EXCEPTION
+    role_permissions = await get_verified_role_permissions(role_id=team_member.role_id,
+                                                           permission_names=permission_names)
+    return role_permissions
 
 
 async def create_default_team_role_permissions(team_id: UUID):
@@ -36,12 +64,13 @@ async def create_default_team_role_permissions(team_id: UUID):
             await map_role_permissions(role_id, role_data['permissions'])
 
 
-async def add_new_team_member(current_user_id: UUID, team_id: UUID, role_name: str):
+async def add_new_team_member(user_id: UUID, team_id: UUID,
+                              role_name: str) -> TeamMemberModel:
     """
     Add a new member to a team.
 
     Args:
-        current_user_id (UUID): The ID of the current user.
+        user_id (UUID): The ID of the new user.
         team_id (UUID): The ID of the team.
         role_name (str): The name of the role to assign to the user.
 
@@ -57,8 +86,13 @@ async def add_new_team_member(current_user_id: UUID, team_id: UUID, role_name: s
         log.warning("Could not find the role with role name %s", role_name)
         raise http_exceptions.ROLE_NOT_FOUND_EXCEPTION
 
+    log.info("Checking if user already a member of the team.")
+    member = get_team_member_by_team_user_id(team_id=team_id, user_id=user_id)
+    if member:
+        raise http_exceptions.ALREADY_MEMBER_EXCEPTION
+
     log.info("Create the team members.")
-    team_member = {"user_id": current_user_id, "team_id": team_id, "role_id": role.id}
+    team_member = {"user_id": user_id, "team_id": team_id, "role_id": role.id}
     return create_team_member(team_member)
 
 
@@ -220,7 +254,35 @@ async def delete_the_team_by_id(team_id: UUID) -> None:
     Raises:
         HTTPException: If team not found
     """
-    log.info()
+    log.info('Deleting team: %s', team_id)
     deleted = delete_team(team_id=team_id)
     if not deleted:
         raise http_exceptions.TEAM_NOT_FOUND_EXCEPTION
+
+
+async def add_team_members(org_id: UUID, team_id: UUID, user_roles: AddTeamMembersRequest
+                           ) -> list[AddMemberResponse]:
+    members_response = []
+    for user_role in user_roles.users:
+        user = get_user_by_id(user_id=user_role.user_id)
+        if not user:
+            raise http_exceptions.USER_NOT_FOUND_EXCEPTION
+
+        added_member = await add_new_team_member(user_id=user_role.user_id,
+                                               team_id=team_id, role_name=user_role.role_name)
+        team_member = {
+            "id": user.id,  # changed from "user_id": user.id
+            "email": user.email,
+            "full_name": f"{user.first_name} {user.last_name}"
+        }
+        response = {
+          "team_id": added_member.team_id,
+          "organization_id": org_id,
+          "role_id": added_member.role_id,
+          "role_name": user_role.role_name,
+          "user_details": team_member,
+          "added_at": added_member.joined_at
+        }
+        members_response.append(AddMemberResponse.model_validate(response))
+
+    return members_response
