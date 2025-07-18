@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 from pydantic import BaseModel, Field
+from schemas.user import UserProfileShort
 
 
 # Internal Schema
@@ -46,6 +47,28 @@ class UpdateTeam(BaseModel):
     description: Annotated[str | None, Field(default=None)]
 
 
+class AddTeamMember(BaseModel):
+    """
+    Base schema for adding a team member.
+
+    Attributes:
+        user_id (UUID): The ID of the user.
+        role_name (str): The name of the role.
+    """
+    user_id: Annotated[UUID, Field()]
+    role_name: Annotated[str | None, Field(min_length=2, default="Viewer")]
+
+
+class AddTeamMembersRequest(BaseModel):
+    """
+    The schema for adding multiple team members.
+
+    Attributes:
+         users (list[AddTeamMember]):  The list of member roles to be added.
+    """
+    users: list[AddTeamMember]
+
+
 # Response Schema
 class SingleTeamResponse(BaseModel):
     """
@@ -76,13 +99,51 @@ class AllTeamResponse(BaseModel):
     The response model for all teams.
 
     Args:
-        items (list[SingleTeamResponse]): The list of all the team members.
+        items (list[SingleTeamResponse]): The list of all the teams.
         total (int): Total number of teams.
         page (int): Page number for pagination (minimum value: 1).
         size (int): Number of items per page (minimum value: 10).
         pages (int): Total number of pages.
     """
     items: list[SingleTeamResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+
+class AddMemberResponse(BaseModel):
+    """
+    Response schema for adding a team.
+
+    Attributes:
+        team_id (UUID): The ID of the team.
+        organization_id (UUID): The ID of the user.
+        role_id (UUID): The ID of the role
+        role_name (str): The name of the role.
+        user_details (UserProfileShort): Schema for short user profile.
+        added_at (datetime): Timestamp when the user added to the team.
+    """
+    team_id: UUID
+    organization_id: UUID
+    role_id: UUID
+    role_name: str
+    user_details: UserProfileShort
+    added_at: datetime
+
+
+class AllMembersResponse(BaseModel):
+    """
+    The response model for all teams members.
+
+    Args:
+        items (list[AddMemberResponse]): The list of all the team members.
+        total (int): Total number of teams.
+        page (int): Page number for pagination (minimum value: 1).
+        size (int): Number of items per page (minimum value: 10).
+        pages (int): Total number of pages.
+    """
+    items: list[AddMemberResponse]
     total: int
     page: int
     size: int

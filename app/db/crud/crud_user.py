@@ -71,9 +71,7 @@ def get_user_by_id(user_id: UUID) -> type[UserModel] | None:
         UserModel | None: The user if found, otherwise None.
     """
     session = get_session()
-    print(f" ====={type(UserModel.id)}, {type(user_id)}")
-    user = session.query(UserModel).filter_by(id=user_id).first()
-    print(user.id)
+    user = session.query(UserModel).get(user_id)
     if not user:
         return None
     return user

@@ -92,7 +92,7 @@ def get_roles_by_org_id(org_id: UUID) -> list[type[RoleModel]] | None:
     return roles
 
 
-def get_role_by_id(role_id: UUID) -> type[RoleModel] | None:
+def get_role_by_id(role_id: UUID) -> RoleModel | None:
     """
     Retrieve a role by its id.
 
@@ -103,7 +103,7 @@ def get_role_by_id(role_id: UUID) -> type[RoleModel] | None:
         RoleModel | None: The role if found, otherwise None.
     """
     session = get_session()
-    role = session.query(RoleModel).filter_by(id=role_id).first()
+    role = session.query(RoleModel).get(role_id)
     if not role:
         return None
     return role

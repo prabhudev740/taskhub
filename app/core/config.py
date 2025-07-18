@@ -18,6 +18,6 @@ EXECUTION_LOG_PATH = f"{PROJECT_PATH / 'execution.log'}"
 SECRET_KEY = os.getenv("SECRET_KEY",
                        "4ba98d9b58410573bd6f583afb81e4a1b232528d64143fd0f6c15a8c26e96c04")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1000"))
 
 timezone = os.getenv("TIMEZONE", "utc")
