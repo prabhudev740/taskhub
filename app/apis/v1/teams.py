@@ -2,14 +2,15 @@
 
 from typing import Annotated
 from fastapi import APIRouter, Query, status
-from core.dependencies import CurrentActiveUserDep, OrganizationIDDep, TeamIDDep
+from core.dependencies import CurrentActiveUserDep, OrganizationIDDep, TeamIDDep, UserIDDep
 from core.logging_conf import Logging
+from schemas.role import RoleID
 from schemas.team import CreateTeam, SingleTeamResponse, AllTeamResponse, UpdateTeam, \
     AddTeamMembersRequest, AddMemberResponse
 from services.organization_service import verify_current_user_role
 from services.team_service import add_new_team_in_organization, \
     retrieve_all_team_of_the_organization, get_team_by_team_id, update_team_details, \
-    delete_the_team_by_id, add_team_members, verify_current_team_role
+    delete_the_team_by_id, add_team_members, verify_current_team_role, update_team_member_role
 
 log = Logging(__name__).log()
 router = APIRouter(
@@ -139,8 +140,9 @@ async def delete_specific_team(current_user: CurrentActiveUserDep,
 
 
 @router.post("/teams/{team_id}/members", response_model=list[AddMemberResponse])
-async def add_a_member_to_team(current_user: CurrentActiveUserDep, team_id: TeamIDDep,
-                         organization_id: OrganizationIDDep, new_users: AddTeamMembersRequest):
+async def add_a_member_to_team(current_user: CurrentActiveUserDep,
+                               organization_id: OrganizationIDDep, team_id: TeamIDDep,
+                               new_users: AddTeamMembersRequest):
     """
     Adds a user (who must already be a member of the parent organization) to the specified
     team with a given role.
@@ -152,9 +154,8 @@ async def add_a_member_to_team(current_user: CurrentActiveUserDep, team_id: Team
         new_users (AddTeamMembersRequest): List of user_id, role_ids.
 
     Returns:
-        SingleMemberResponse: The response for added team member.
+        list[AddMemberResponse]: The response for added team member.
     """
-
     await verify_current_team_role(user_id=current_user.id, team_id=team_id,
                                    permission_names=['team:manage_members'])
     return await add_team_members(org_id=organization_id,
@@ -169,12 +170,27 @@ def retrieve_members_of_organization(current_user: CurrentActiveUserDep):
     log.info("%s", current_user)
 
 
-@router.put("/teams/{team_id}/members/{user_id}/role")
-def update_user_role_in_team(current_user: CurrentActiveUserDep):
+@router.put("/teams/{team_id}/members/{user_id}/role", response_model=AddMemberResponse)
+async def update_user_role_in_team(current_user: CurrentActiveUserDep,
+                             organization_id: OrganizationIDDep, team_id: TeamIDDep,
+                             user_id: UserIDDep, new_role: RoleID):
     """
     Updates the role of a specific member within a team.
+
+    Args:
+        current_user (CurrentActiveUserDep): The current active user.
+        organization_id (OrganizationIDDep): ID of the organization.
+        team_id (TeamIDDep): The ID of the team.
+        user_id (UserIDDep): The ID of the team member.
+        new_role (RoleID): The ID of the new role.
+
+    Returns:
+        AddMemberResponse: The response for updated team member.
     """
-    log.info("%s", current_user)
+    await verify_current_team_role(user_id=current_user.id, team_id=team_id,
+                                   permission_names=['team:manage_members'])
+    return await update_team_member_role(org_id=organization_id, team_id=team_id,
+                                         user_id=user_id, role_id=new_role.role_id)
 
 
 @router.delete("/teams/{team_id}/members/{user_id}")

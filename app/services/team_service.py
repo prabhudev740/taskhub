@@ -7,9 +7,9 @@ from core.permission_config import TEAM_ROLES
 from db.crud.crud_organization import create_organization_team
 from db.crud.crud_team import get_team_by_name, create_team, get_member_count_by_team_id, \
     get_organization_teams, create_team_member, get_team_by_id, update_team, delete_team, \
-    get_team_member_by_team_user_id
+    get_team_member_by_team_user_id, update_member_role
 from db.crud.crud_user import get_user_by_id
-from db.crud.curd_role import get_role_by_role_name_team_id, create_role
+from db.crud.curd_role import get_role_by_role_name_team_id, create_role, get_role_by_id
 from db.models import TeamModel, TeamMemberModel
 from exceptions import http_exceptions
 from schemas.role import CreateRole
@@ -303,3 +303,56 @@ async def add_team_members(org_id: UUID, team_id: UUID, user_roles: AddTeamMembe
         members_response.append(AddMemberResponse.model_validate(response))
 
     return members_response
+
+
+async def update_team_member_role(org_id: UUID, team_id: UUID, user_id: UUID,
+                                  role_id: UUID) -> AddMemberResponse:
+    """
+    Up the role of a particular team member.
+
+    Args:
+        org_id (UUID): The ID of the organization.
+        team_id (UUID): The ID of the team.
+        user_id (UUID): The ID of the user.
+        role_id (UUID): The new role ID.
+
+    Raises:
+        HTTPException: If user or role not found.
+
+    Returns:
+        AddMemberResponse: Details for the updated user.
+    """
+    log.info("Verifying the user for user_id: %s", user_id)
+    user = get_user_by_id(user_id=user_id)
+    if not user:
+        log.warning("User not found for user_id: %s", user_id)
+        raise http_exceptions.USER_NOT_FOUND_EXCEPTION
+    log.debug("Username: %s", user.username)
+
+    log.info("Verifying the role for role_id: %s", role_id)
+    role = get_role_by_id(role_id=role_id)
+    if not role:
+        log.warning("Role not found for role_id: %s", role_id)
+        raise http_exceptions.ROLE_NOT_FOUND_EXCEPTION
+    log.debug("Role name: %s", role.name)
+
+    log.info("Updating user role.")
+    updated_member = update_member_role(team_id=team_id, user_id=user_id, role_id=role_id)
+    if not updated_member:
+        raise http_exceptions.USER_NOT_FOUND_EXCEPTION
+
+    log.info("Generating the response for user: %s", user.id)
+    team_member = {
+        "id": user.id,  # changed from "user_id": user.id
+        "email": user.email,
+        "full_name": f"{user.first_name} {user.last_name}"
+    }
+    response = {
+        "team_id": updated_member.team_id,
+        "organization_id": org_id,
+        "role_id": updated_member.role_id,
+        "role_name": role.name,
+        "user_details": team_member,
+        "added_at": updated_member.joined_at
+    }
+    return  AddMemberResponse.model_validate(response)

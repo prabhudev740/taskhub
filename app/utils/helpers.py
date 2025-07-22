@@ -76,3 +76,16 @@ def get_team_id(team_id: Annotated[str, Path(...)]) -> UUID:
         UUID: team_id in UUID.
     """
     return UUID(team_id)
+
+
+def  get_user_id(user_id: Annotated[str, Path(...)]) -> UUID:
+    """
+    Coverts the str user id to UUID.
+
+    Args:
+        user_id (str): The user_id in String type.
+
+    Returns:
+        UUID: user_id in UUID.
+    """
+    return UUID(user_id)
