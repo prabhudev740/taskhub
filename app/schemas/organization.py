@@ -66,7 +66,7 @@ class OrganizationUserRole(BaseModel):
     Attributes:
         username (Annotated[str, Field]): Username of the user (minimum length: 5).
         role_name (Annotated[str | None, Field]): Name of the role assigned to the user
-        (optional, minimum length: 2, default: "Viewer").
+            (optional, minimum length: 2, default: "Viewer").
     """
     username: Annotated[str, Field(min_length=5)]
     role_name: Annotated[str | None, Field(min_length=2, default="Viewer")]
