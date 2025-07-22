@@ -42,6 +42,29 @@ def create_team_member(team_member: dict[str, UUID]) -> TeamMemberModel:
     return team_member
 
 
+def update_member_role(team_id:UUID, user_id: UUID, role_id: UUID) -> type[TeamMemberModel] | None:
+    """
+    Update the role of the member in the team.
+
+    Args:
+        team_id (UUID): The ID of the team.
+        user_id (UUID): The ID of the user.
+        role_id (UUID): The ID of the new role.
+
+    Returns:
+        TeamMemberModel: The newly created team.
+    """
+    session = get_session()
+    team_member = session.query(TeamMemberModel).filter_by(
+        team_id=team_id, user_id=user_id).first()
+    if not team_member:
+        return None
+    setattr(team_member, "role_id", role_id)
+    session.commit()
+    session.refresh(team_member)
+    return team_member
+
+
 def get_team_by_id(team_id: UUID) -> TeamModel | None:
     """
     Retrieve the team by team ID from DB.

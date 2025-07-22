@@ -81,6 +81,16 @@ class CreateCustomRole(BaseModel):
     permission_ids: Annotated[list[UUID], Field()]
 
 
+class RoleID(BaseModel):
+    """
+    Schema for role ID to get specific role, updating a member role, etc.
+
+    Attributes:
+        role_id (UUID): The UUID of the role.
+    """
+    role_id: Annotated[UUID, Field()]
+
+
 # Response Schema
 class RoleResponse(BaseModel):
     """
